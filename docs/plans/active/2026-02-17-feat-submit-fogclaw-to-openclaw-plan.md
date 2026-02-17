@@ -198,7 +198,7 @@ The external OpenClaw PR should reference these repo files without changing thei
 - pr: https://github.com/openclaw/openclaw/pull/18779
 - branch: sidmohan0:openclaw-upstream-submission
 - commit: 2609f9838 (openclaw fork)
-- ci: not yet triggered (docs-only + upstream checks pending review)
+- ci: initiated (openclaw/pull/18779 CI: docs-scope, check-docs, secrets passed; several workflows queued for label/check infra at creation time)
 
 ## Review Findings
 
@@ -217,6 +217,7 @@ The external OpenClaw PR should reference these repo files without changing thei
   - `npm pkg get openclaw`
   - `node` import smoke (`true fogclaw FogClaw`)
   - upstream PR created: `https://github.com/openclaw/openclaw/pull/18779`
+  - CI snapshot at submit time: `check-docs` / `docs-scope` / `secrets` passed; `label`, `label-issues`, `formal_conformance`, `no-tabs`, second `docs-scope` check still queued
 - rollback:
   - Close/recreate PR if maintainers request intake-path correction.
 - post-release checks:
