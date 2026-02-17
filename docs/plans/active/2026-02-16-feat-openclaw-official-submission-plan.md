@@ -81,7 +81,7 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
 - Core entity detection behavior was intentionally unchanged; release-risk now centers on documentation and reviewer-facing reproducibility.
 - Acceptance evidence was reproduced on a clean checkout for the current verification set.
 - High-priority review finding `C-1` is mitigated in implementation by `tests/plugin-smoke.test.ts` using non-mocked `Scanner` execution.
-- Formal re-review is still required to close the gate formally.
+- Formal re-review completed (`PASS`) and gate criteria are no longer blocking.
 
 ## Context and Orientation
 
