@@ -24,16 +24,19 @@ After this initiative, a reviewer should be able to find a dedicated upstream Op
 
 - [x] (2026-02-17T01:56:00Z) P1 [Setup] Create submission intent spec for official OpenClaw side flow in `docs/specs/2026-02-17-feat-submit-fogclaw-to-openclaw.md`.
 - [x] (2026-02-17T01:58:00Z) P2 [M1] Read and align the plan against repository conventions (`docs/PLANS.md` + `docs/runbooks/`) and confirm open questions from spec.
-- [ ] (2026-02-17T02:00:00Z) P3 [M1] Confirm target OpenClaw submission repository/path and required PR checklist/template.
-- [ ] (2026-02-17T02:10:00Z) P4 [M2] Draft external PR body with reproducible evidence block and maintainer-facing rationale.
-- [ ] (2026-02-17T02:15:00Z) P5 [M2] Open upstream OpenClaw PR from branch containing no code changes outside `@openclaw/fogclaw` submission evidence/supporting docs.
-- [ ] (2026-02-17T02:20:00Z) P6 [M3] Record maintainer feedback and implement any required follow-up in repository or PR only when explicitly requested.
-- [ ] (2026-02-17T02:30:00Z) P7 [M3] Update this plan `Pull Request` and `Verify/Review` sections with final submission state and closeout status.
+- [x] (2026-02-17T02:05:00Z) P3 [M1] Confirm target OpenClaw submission repository/path and required PR checklist/template.
+- [x] (2026-02-17T02:20:00Z) P4 [M2] Draft external PR body with reproducible evidence block and maintainer-facing rationale.
+- [x] (2026-02-17T02:28:00Z) P5 [M2] Open upstream OpenClaw PR from branch containing only FogClaw submission/supporting docs (`docs/plugins/fogclaw.md`).
+- [ ] (2026-02-17T02:40:00Z) P6 [M3] Record maintainer feedback and implement any required follow-up in repository or PR only when explicitly requested.
+- [ ] (2026-02-17T02:50:00Z) P7 [M3] Update this plan `Pull Request` and `Verify/Review` sections with final submission state and closeout status.
 
 ## Surprises & Discoveries
 
-- Observation: The initial phase of this initiative remains uncertain because the exact OpenClaw submission target path is not yet confirmed in this repo.
-  Evidence: Existing work has completed DataFog-side plugin merge, but there is no confirmed upstream submission path in `docs/specs` or existing plans.
+- Observation: OpenClaw intake guidance is not documented as a dedicated "plugin submission" checklist; the operative path is standard upstream PR flow on `openclaw/openclaw` with the canonical PR template.
+  Evidence: repo-level review (`.github/pull_request_template.md`) plus `docs/reference/RELEASING.md` plugin scope notes.
+
+- Observation: `DataFog/fogclaw` is not a fork of `openclaw/openclaw`, so direct cross-repo PR creation from that repo was not possible via `gh`.
+  Resolution: used fork source `sidmohan0/openclaw` to open PR `#18779` into upstream.
 
 ## Decision Log
 
@@ -44,6 +47,10 @@ After this initiative, a reviewer should be able to find a dedicated upstream Op
 - Decision: Keep `@openclaw/fogclaw` as the canonical package identity and treat manifest evidence (`openclaw.plugin.json`, `dist/index.js`, and install command) as mandatory submission evidence.
   Rationale: Submission evidence must be reproducible and match what was already validated in the internal PR phase.
   Date/Author: 2026-02-17T01:58:00Z / sidmohan
+
+- Decision: Use standard upstream PR delivery on `openclaw/openclaw` and open from a true fork (`sidmohan0/openclaw`) rather than the DataFog repo.
+  Rationale: `DataFog/fogclaw` is not a fork of the target repo, and `gh` blocks non-fork cross-repo PRs with direct refs.
+  Date/Author: 2026-02-17T02:29:00Z / sidmohan
 
 ## Outcomes & Retrospective
 
@@ -168,8 +175,11 @@ Rollback during this initiative is low-risk: no functional code changes are plan
   - `npm run test:plugin-smoke` pass
   - `npm pkg get openclaw` and import smoke output
 
-- Open question that must be resolved before PR open:
-  - Exact OpenClaw target repository and PR template requirements.
+- Upstream PR status:
+  - PR opened at `https://github.com/openclaw/openclaw/pull/18779` with submission body + reproducible evidence.
+  - Target repository: `openclaw/openclaw` (main branch).
+  - Required template source: `.github/pull_request_template.md`.
+  - Plugin release scope constraints used from `docs/reference/RELEASING.md` (npm plugin scope + existing plugin list expectations).
 
 ## Interfaces and Dependencies
 
@@ -185,25 +195,36 @@ The external OpenClaw PR should reference these repo files without changing thei
 
 ## Pull Request
 
-- pr: (populate after opening upstream submission PR)
-- branch:
-- commit:
-- ci:
+- pr: https://github.com/openclaw/openclaw/pull/18779
+- branch: sidmohan0:openclaw-upstream-submission
+- commit: 2609f9838 (openclaw fork)
+- ci: not yet triggered (docs-only + upstream checks pending review)
 
 ## Review Findings
 
-(Reserved for `he-review`.)
+- P1/P2: no maintainer feedback yet (PR is open, under initial maintainer triage).
+- Pending: check for checklist/approval or requested follow-up once review starts.
 
 ## Verify/Release Decision
 
-- decision: pending
-- date:
+- decision: pending (upstream PR open; final release decision deferred to maintainer review)
+- date: 2026-02-17T02:35:00Z
 - open findings by priority (if any): pending
 - evidence:
+  - `npm test`
+  - `pnpm build`
+  - `npm run test:plugin-smoke`
+  - `npm pkg get openclaw`
+  - `node` import smoke (`true fogclaw FogClaw`)
+  - upstream PR created: `https://github.com/openclaw/openclaw/pull/18779`
 - rollback:
+  - Close/recreate PR if maintainers request intake-path correction.
 - post-release checks:
+  - monitor review comments and any requested follow-up changes.
+  - once approved, confirm plugin docs/listing + release status in upstream merge checks.
 - owner: sidmohan
 
 ## Revision Notes
 
 - 2026-02-17T01:58:00Z: Initialized plan from spec `2026-02-17-feat-submit-fogclaw-to-openclaw`. Reason: transition intent to upstream OpenClaw submission as the remaining official readiness step.
+- 2026-02-17T02:28:00Z: Opened upstream submission PR `https://github.com/openclaw/openclaw/pull/18779` from fork `sidmohan0/openclaw` (branch `openclaw-upstream-submission`) with evidence-first PR body and `docs/plugins/fogclaw.md` content only.
