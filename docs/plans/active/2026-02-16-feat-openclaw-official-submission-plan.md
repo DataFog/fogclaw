@@ -286,7 +286,7 @@ Third-party dependencies relevant to this plan:
 
 - pr: https://github.com/DataFog/fogclaw/pull/1
 - branch: openclaw-plugin-submission
-- commit: 7214ce6eaf9de2fb7f7f0ce6f5f4bf8a8fbe6f0f
+- commit: e2f1322a1428922e6e5d129242f6dee24a5c20c1
 - ci:
   - Docs Drift Gate: pass
   - Docs Lint: pass
