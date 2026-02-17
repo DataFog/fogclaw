@@ -1,0 +1,45 @@
+{
+  "id": "fogclaw",
+  "name": "FogClaw",
+  "version": "0.1.0",
+  "description": "PII detection & custom entity redaction powered by DataFog",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "guardrail_mode": {
+        "type": "string",
+        "enum": ["redact", "block", "warn"],
+        "default": "redact"
+      },
+      "redactStrategy": {
+        "type": "string",
+        "enum": ["token", "mask", "hash"],
+        "default": "token"
+      },
+      "model": {
+        "type": "string",
+        "default": "onnx-community/gliner_large-v2.1"
+      },
+      "confidence_threshold": {
+        "type": "number",
+        "default": 0.5,
+        "minimum": 0,
+        "maximum": 1
+      },
+      "custom_entities": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": []
+      },
+      "entityActions": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string",
+          "enum": ["redact", "block", "warn"]
+        },
+        "default": {}
+      }
+    }
+  }
+}

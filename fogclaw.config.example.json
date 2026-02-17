@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "guardrail_mode": "redact",
+  "redactStrategy": "token",
+  "model": "onnx-community/gliner_large-v2.1",
+  "confidence_threshold": 0.5,
+  "custom_entities": ["project codename", "internal tool name"],
+  "entityActions": {
+    "SSN": "block",
+    "CREDIT_CARD": "block",
+    "EMAIL": "redact",
+    "PHONE": "redact",
+    "PERSON": "warn"
+  }
+}
