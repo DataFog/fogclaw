@@ -1,5 +1,5 @@
 {
-  "name": "@datafog/fogclaw",
+  "name": "@openclaw/fogclaw",
   "version": "0.1.0",
   "description": "OpenClaw plugin for PII detection & custom entity redaction powered by DataFog",
   "type": "module",
@@ -9,6 +9,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:plugin-smoke": "vitest run tests/plugin-smoke.test.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

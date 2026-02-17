@@ -27,7 +27,7 @@ const fogclaw = {
   id: "fogclaw",
   name: "FogClaw",
 
-  async register(api: any) {
+  register(api: any) {
     const rawConfig = api.pluginConfig ?? api.getConfig?.() ?? {};
     const config = loadConfig(rawConfig);
 
@@ -37,46 +37,63 @@ const fogclaw = {
     }
 
     const scanner = new Scanner(config);
-    await scanner.initialize();
+    // Initialize GLiNER in the background — regex works immediately,
+    // GLiNER becomes available once the model loads.
+    scanner.initialize().catch((err: unknown) => {
+      api.logger?.warn(`[fogclaw] GLiNER background init failed: ${String(err)}`);
+    });
 
     // --- HOOK: Guardrail on incoming messages ---
-    api.on("before_agent_start", async (event: any, ctx: any) => {
-      const message = event.query ?? event.message ?? "";
+    api.on("before_agent_start", async (event: any) => {
+      const message = event.prompt ?? "";
+      if (!message) return;
+
       const result = await scanner.scan(message);
 
       if (result.entities.length === 0) return;
 
-      // Check for any "block" actions — return early to prevent agent execution
+      // Classify entities by their configured action
+      const blocked: typeof result.entities = [];
+      const warned: typeof result.entities = [];
+      const toRedact: typeof result.entities = [];
+
       for (const entity of result.entities) {
         const action: GuardrailAction =
           config.entityActions[entity.label] ?? config.guardrail_mode;
-
-        if (action === "block") {
-          ctx?.reply?.(
-            `Message blocked: detected ${entity.label}. Please rephrase without sensitive information.`,
-          );
-          return { abort: true };
-        }
+        if (action === "block") blocked.push(entity);
+        else if (action === "warn") warned.push(entity);
+        else if (action === "redact") toRedact.push(entity);
       }
 
-      // Check for any "warn" actions
-      const warnings = result.entities.filter((e) => {
-        const action = config.entityActions[e.label] ?? config.guardrail_mode;
-        return action === "warn";
-      });
-      if (warnings.length > 0) {
-        const types = [...new Set(warnings.map((w) => w.label))].join(", ");
-        ctx?.notify?.(`PII detected: ${types}`);
+      const contextParts: string[] = [];
+
+      // "block" — inject a strong instruction to refuse
+      if (blocked.length > 0) {
+        const types = [...new Set(blocked.map((e) => e.label))].join(", ");
+        contextParts.push(
+          `[FOGCLAW GUARDRAIL — BLOCKED] The user's message contains sensitive information (${types}). ` +
+          `Do NOT process or repeat this information. Ask the user to rephrase without sensitive data.`,
+        );
       }
 
-      // Apply redaction for "redact" action entities — inject sanitized text
-      const toRedact = result.entities.filter((e) => {
-        const action = config.entityActions[e.label] ?? config.guardrail_mode;
-        return action === "redact";
-      });
+      // "warn" — inject a warning notice
+      if (warned.length > 0) {
+        const types = [...new Set(warned.map((e) => e.label))].join(", ");
+        contextParts.push(
+          `[FOGCLAW NOTICE] PII detected in user message: ${types}. Handle with care.`,
+        );
+      }
+
+      // "redact" — replace PII with tokens
       if (toRedact.length > 0) {
         const redacted = redact(message, toRedact, config.redactStrategy);
-        return { prependContext: redacted.redacted_text };
+        contextParts.push(
+          `[FOGCLAW REDACTED] The following is the user's message with PII redacted:\n${redacted.redacted_text}`,
+        );
+      }
+
+      if (contextParts.length > 0) {
+        return { prependContext: contextParts.join("\n\n") };
       }
     });
 
