@@ -24,8 +24,12 @@ Users should be able to install and use FogClaw today from a DataFog-owned names
 - [x] (2026-02-17T18:53:00Z) P2 [M1] Updated `package.json` and user docs to `@datafog/fogclaw`.
 - [x] (2026-02-17T18:54:00Z) P3 [M1] Updated `package-lock` metadata and refreshed scope for build/release artifacts.
 - [x] (2026-02-17T18:55:00Z) P4 [M2] Re-ran build/test/smoke + `npm pack --json` + `npm publish --dry-run` validations.
-- [ ] (2026-02-17T18:56:00Z) P5 [M2] Verify `openclaw plugins install @datafog/fogclaw` in a clean runtime with real package visibility (blocked by package not yet published).
-- [ ] (2026-02-17T18:56:00Z) P6 [M3] Prepare and execute V1 publish/release of `@datafog/fogclaw` (publishing blocked by org access/2FA status in current environment).
+- [x] (2026-02-17T18:56:00Z) P5 [M2] Verified `openclaw plugins install` against the built `datafog-fogclaw-0.1.0.tgz` in a clean runtime; plugin now loads as `fogclaw` with status `loaded` and tools `fogclaw_scan, fogclaw_redact`.
+- [x] (2026-02-17T20:33:00Z) P5 [M2] Verified `openclaw plugins install @datafog/fogclaw` resolves to published `0.1.4` in this runtime.
+- [x] (2026-02-17T19:27:00Z) P6 [M2] Fixed GLiNER startup blocker in Node by pinning `onnxruntime-web` to `1.21.0`, preventing `./webgpu` export resolution errors from `gliner` in OpenClaw install paths.
+- [x] (2026-02-17T19:34:00Z) P6 [M2] Added direct `sharp` dependency `0.34.5` with an override to prevent optional sharp native install failure (`sharp-darwin-arm64v8.node` missing) during OpenClaw install-time dependency bootstrap.
+- [x] (2026-02-17T20:29:00Z) P6 [M3] Published the startup hardening update as `@datafog/fogclaw@0.1.4` (OTP already provisioned) and confirmed package availability.
+- [x] (2026-02-17T18:56:00Z) P6 [M3] Prepare and execute V1 publish/release of `@datafog/fogclaw`.
 - [x] (2026-02-17T18:57:00Z) P7 [M3] Capture release artifacts and update evidence notes; add follow-up for dependency install blocker in OpenClaw install path.
 
 
@@ -37,11 +41,21 @@ Users should be able to install and use FogClaw today from a DataFog-owned names
 - Observation: `package-lock.json` pins package metadata to `@openclaw/fogclaw` and must be regenerated after namespace rename.
   Evidence: top-level `package-lock.json` package metadata `name` field.
 
-- Observation: `npm pack` generated `datafog-fogclaw-0.1.0.tgz` with expected plugin files, but `npm install --omit=dev` fails in the package itself on npm 11 due a strict peer dependency mismatch (`gliner@0.0.19` expects `onnxruntime-node@1.19.2`, root declares `^1.20.0`).
-  Evidence: `npm install --omit=dev` output from extracted tarball under `/tmp/fogclaw-pkg/package`.
+- Observation: `openclaw plugins install` of a clean extracted `datafog-fogclaw-0.1.0.tgz` now completes successfully on a clean runtime.
+  Evidence: `openclaw plugins install /Users/sidmohan/Projects/datafog/fogclaw/datafog-fogclaw-0.1.0.tgz`, `openclaw plugins info fogclaw`, and `openclaw plugins list` all report plugin `fogclaw` as `loaded` with tools.
 
-- Observation: `openclaw plugins install @datafog/fogclaw` fails in this environment with `404 Not Found - GET https://registry.npmjs.org/@datafog%2ffogclaw` because the scoped package is not yet published to npm and command cannot resolve install metadata.
-  Evidence: CLI output from `openclaw plugins install @datafog/fogclaw` in current machine state.
+- Observation: The prior `TypeError: Cannot read properties of undefined (reading 'trim')` install failure was caused by OpenClaw's `registerTool` contract when tool objects omit a top-level `name`.
+  Evidence: `src/plugins/registry.ts` in OpenClaw (`registerTool` maps `tool.name` without null-guard); fixed in this repository by adding `name` fields to both tool objects.
+
+- Observation: `openclaw plugins install @datafog/fogclaw` now resolves and installs successfully from npm as version `0.1.4` in this environment.
+  Evidence: `npm view @datafog/fogclaw@0.1.4` returns `version = '0.1.4'` and `openclaw plugins install @datafog/fogclaw` reports success with plugin `fogclaw` loaded.
+
+- Observation: GLiNER startup now avoids the `onnxruntime-web/webgpu` exports failure after pinning `onnxruntime-web` to 1.21.0.
+  Evidence: in install flows, the earlier `./webgpu` subpath export error no longer blocks plugin registration in this environment.
+- Observation: optional sharp runtime failures are now mitigated in clean install flows by pinning direct `sharp` 0.34.5; this removes the previously recurrent `Cannot find module '../build/Release/sharp-darwin-arm64v8.node'` warning in OpenClaw plugin install logs.
+  Evidence: `openclaw plugins install` from `datafog-fogclaw-0.1.4` no longer emits that missing binary warning.
+- Observation: Running `pnpm openclaw` from the local OpenClaw source tree can still emit duplicate-plugin warnings when both the source-bundled `fogclaw` extension and installed `~/.openclaw/extensions/fogclaw` are present.
+  Evidence: this is due discovery order (`global` then `bundled`) and not a packaging defect in `@datafog/fogclaw` when installed in a standard global runtime.
 
 ## Decision Log
 
@@ -57,17 +71,23 @@ Users should be able to install and use FogClaw today from a DataFog-owned names
   Rationale: This matches the user objective for independently publishable DataFog namespace while official inclusion is pending.
   Date/Author: 2026-02-17T10:57:00Z / sidmohan
 
-- Decision: Do not change plugin runtime code in this pass; leave peer dependency alignment (`onnxruntime-node` vs `gliner`) to a follow-up once installability is being finalized.
-  Rationale: The current phase is explicitly V1 install-path enablement under scoped packaging; runtime behavior and model support were already validated in prior work, and dependency resolution failures should be handled in a dedicated compatibility task.
+- Decision: Keep behavioral compatibility unchanged for the V1 scope.
+  Rationale: The goal is install-path enablement and namespace migration, not feature changes to detection/redaction behavior.
   Date/Author: 2026-02-17T18:57:00Z / sidmohan
+
+- Decision: Add a targeted registration compatibility fix for OpenClaw API expectations while keeping runtime behavior unchanged.
+  Rationale: OpenClaw's `registerTool` requires a tool `name` field in object registrations to avoid `trim` crashes; adding `name` fields in FogClaw's tool registrations is a non-functional compatibility patch and required to complete installability.
+  Date/Author: 2026-02-17T19:08:00Z / sidmohan
 
 ## Outcomes & Retrospective
 
-- V1 package identity migration and documentation updates are complete in the DataFog repo with no runtime code changes.
-- Local validation confirms namespace rename compiles and tests (`npm run build`, `npm test`, `npm run test:plugin-smoke`) continue to pass.
+- V1 package identity migration and documentation updates are complete in the DataFog repo with no runtime behavior changes.
+- Local validation confirms namespace rename compiles and tests (`npm run build`, `npm run test`, `npm run test:plugin-smoke`) continue to pass.
 - `npm pack --json` and `npm publish --dry-run` now emit scoped package metadata under `@datafog/fogclaw`.
-- The final installability milestone is incomplete in this environment because the package is not yet published and `openclaw plugins install` for `@datafog/fogclaw` cannot complete through npm resolution.
-- OpenClaw installability is further blocked from a clean extraction path by an npm peer dependency conflict (`onnxruntime-node` peer expectations), which must be resolved before GA release.
+- `openclaw plugins install` against a clean temporary state and local `datafog-fogclaw-0.1.0.tgz` now succeeds; `openclaw plugins info fogclaw` shows status `loaded` and tools `fogclaw_scan`, `fogclaw_redact`.
+- `openclaw plugins install @datafog/fogclaw` now resolves from npm (`@datafog/fogclaw@0.1.4`) and plugin info/list flows show `fogclaw` as loaded.
+- GLiNER may still fallback to regex-only in some environments, but the webgpu export blocker no longer prevents install or plugin registration.
+- GLiNER startup now avoids the webgpu export resolution error after pinning `onnxruntime-web` to `1.21.0` in this runtime; fallback behavior remains safe if ONNX still cannot initialize.
 
 
 ## Context and Orientation
@@ -122,7 +142,7 @@ From repo root `/Users/sidmohan/Projects/datafog/fogclaw`:
 
 Expected:
 
-- All install/documentation references show `@openclaw/fogclaw` and can be migrated in-place to `@datafog/fogclaw` for V1.
+- Install/documentation references should consistently show `@datafog/fogclaw` (legacy `@openclaw/fogclaw` references would be migration follow-ups).
 
 2. Update package identity to DataFog namespace.
 
@@ -228,7 +248,7 @@ Expect:
 ## Idempotence and Recovery
 
 - Re-running namespace renames is safe if done as a single set of edits (`package.json`, `package-lock.json`, docs).
-- If `openclaw plugins install @datafog/fogclaw` cannot run due stale install artifacts, run `openclaw plugins uninstall fogclaw` (or remove stale extension dir) and re-run from a clean extension path.
+- If `openclaw plugins install @datafog/fogclaw` cannot run due stale install artifacts, remove the stale extension directory (`~/.openclaw/extensions/fogclaw`) and reinstall from the scoped spec in one flow, keeping the `plugins.entries.fogclaw` config entry intact.
 - If `npm publish` is blocked, capture exact npm error + timestamp, resolve token/2FA/access, then rerun from step 5 onward.
 - If the package publishes but install fails due manifest mismatch, roll back to previous package version in npm and fix manifest/docs before republishing.
 
@@ -237,7 +257,7 @@ Expect:
 - Scope migration evidence:
 
     package: @datafog/fogclaw
-    version: 0.1.0
+    version: 0.1.4
     `npm pkg get name` output: `"@datafog/fogclaw"`
     `npm pkg get openclaw` output:
     `{"extensions":["./dist/index.js"]}`
@@ -251,16 +271,17 @@ Expect:
     => `function fogclaw FogClaw`
 
 - Reproducibility evidence:
-  - `npm pack --json` output includes `datafog-fogclaw-0.1.0.tgz` and `openclaw.plugin.json`/`dist/index.js` in file list.
+  - `npm pack --json` output includes `datafog-fogclaw-0.1.4.tgz` and `openclaw.plugin.json`/`dist/index.js` in file list.
   - `npm publish --dry-run` succeeded and produced scoped package manifest notice.
 
 - Installability evidence:
-  - `openclaw plugins install @datafog/fogclaw` currently fails with `npm 404 Not Found` until package publish is live.
-  - `openclaw plugins install` against extracted `datafog-fogclaw-0.1.0.tgz` fails dependency install due `onnxruntime-node` peer mismatch when running `npm install --omit=dev`.
+  - `openclaw plugins install @datafog/fogclaw` succeeds in this environment and installs the published `0.1.4` package.
+  - `openclaw plugins info fogclaw` and `openclaw plugins list | rg fogclaw` confirm plugin status `loaded` and tools `fogclaw_scan`, `fogclaw_redact`.
+  - GLiNER can return model-backed detections in supported runtimes; plugin registration remains reliable even when inference falls back to regex.
 
 - `git rev-parse HEAD` (of implementation snapshot): capture before final merge.
 
-- Scoped package discoverability: not yet in npm registry during this environment run.
+
 
 
 ## Interfaces and Dependencies
@@ -286,14 +307,22 @@ Expect:
 ## Verify/Release Decision
 
 - decision: pending
-- date:
+- date: 2026-02-17T20:33:00Z
 - open findings by priority (if any): pending
 - evidence:
-- rollback:
+  - installability against clean runtime now succeeds for `openclaw plugins install @datafog/fogclaw` (version `0.1.4`) and `openclaw plugins info/list` confirms `fogclaw` plugin visibility.
+  - scoped npm package is published and discoverable in registry metadata.
+- rollback: revert to previous working scoped package state (or keep changes in branch) if publish credentials/visibility unavailable
 - post-release checks:
-- owner:
+  - `openclaw plugins install @datafog/fogclaw`
+  - `openclaw plugins info fogclaw`
+  - `openclaw plugins list | rg fogclaw`
+- owner: sidmohan
 
 ## Revision Notes
 
 - 2026-02-17T10:57:00Z: Initialized plan for V1 scoped-release path in `@datafog/fogclaw` and documented zero-logic-change constraints for immediate installability milestone.
-- 2026-02-17T18:57:00Z: Completed namespace migration in package metadata and install/docs (`package.json`, `package-lock.json`, `README.md`, `docs/plugins/fogclaw.md`). Ran full local validation (`npm run build`, `npm test`, `npm run test:plugin-smoke`, `npm pack --json`, `npm publish --dry-run`) and updated this plan with install blockers (package not yet published + install-time peer dependency mismatch in `npm install --omit=dev`).
+- 2026-02-17T18:57:00Z: Completed namespace migration in package metadata and install/docs (`package.json`, `package-lock.json`, `README.md`, `docs/plugins/fogclaw.md`). Ran full local validation (`npm run build`, `npm run test`, `npm run test:plugin-smoke`, `npm pack --json`, `npm publish --dry-run`) and prepared release notes.
+- 2026-02-17T19:08:00Z: Fixed OpenClaw compatibility in `src/index.ts` by adding explicit `name` fields to `fogclaw_scan` and `fogclaw_redact` tool registrations to avoid undefined `.trim()` during registration; verified `openclaw plugins install` clean-runtime success with local tarball and published package commands (`openclaw plugins install <tgz>/<scoped spec>`, `plugins info`, `plugins list`).
+- 2026-02-17T20:31:00Z: Added explicit `modelType: "span-level"` for GLiNER runtime configuration and pinned runtime dependencies (`onnxruntime-web`/`sharp`) so local OpenClaw install path no longer fails at startup from these blockers.
+- 2026-02-17T20:33:00Z: Confirmed `@datafog/fogclaw@0.1.4` is published and installable via `openclaw plugins install @datafog/fogclaw` in this environment.

@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 // Mock the gliner npm package so we don't need the actual 1.4GB model
 vi.mock("gliner", () => {
@@ -14,10 +17,102 @@ vi.mock("gliner", () => {
     }
 
     async inference(
-      text: string,
-      labels: string[],
-      options: { threshold: number },
+      request: { texts: string[]; entities: string[] } | string | string[],
+      maybeEntities?: string[],
+      _flatNer = false,
+      _threshold = 0.5,
     ): Promise<Array<{ text: string; label: string; score: number; start: number; end: number }>> {
+      const text =
+        typeof request === "string"
+          ? request
+          : Array.isArray(request)
+            ? request[0] ?? ""
+            : request.texts[0] ?? "";
+      const requestEntities =
+        typeof request === "object" && request !== null && "entities" in request
+          ? request.entities
+          : undefined;
+      const labels =
+        Array.isArray(maybeEntities)
+          ? maybeEntities
+          : requestEntities ?? [];
+      const results: Array<{ text: string; label: string; score: number; start: number; end: number }> = [];
+
+      // Simulate entity detection for "John Smith"
+      const johnIndex = text.indexOf("John Smith");
+      if (johnIndex !== -1 && labels.includes("person")) {
+        results.push({
+          text: "John Smith",
+          label: "person",
+          score: 0.95,
+          start: johnIndex,
+          end: johnIndex + "John Smith".length,
+        });
+      }
+
+      // Simulate entity detection for "Acme Corp"
+      const acmeIndex = text.indexOf("Acme Corp");
+      if (acmeIndex !== -1 && labels.includes("organization")) {
+        results.push({
+          text: "Acme Corp",
+          label: "organization",
+          score: 0.88,
+          start: acmeIndex,
+          end: acmeIndex + "Acme Corp".length,
+        });
+      }
+
+      // Simulate entity detection for "New York"
+      const nyIndex = text.indexOf("New York");
+      if (nyIndex !== -1 && labels.includes("location")) {
+        results.push({
+          text: "New York",
+          label: "location",
+          score: 0.91,
+          start: nyIndex,
+          end: nyIndex + "New York".length,
+        });
+      }
+
+      return results;
+    }
+  }
+
+  return { Gliner: MockGliner };
+});
+
+vi.mock("gliner/node", () => {
+  class MockGliner {
+    private config: any;
+
+    constructor(config: any) {
+      this.config = config;
+    }
+
+    async initialize(): Promise<void> {
+      // No-op in mock
+    }
+
+    async inference(
+      request: { texts: string[]; entities: string[] } | string | string[],
+      maybeEntities?: string[],
+      _flatNer = false,
+      _threshold = 0.5,
+    ): Promise<Array<{ text: string; label: string; score: number; start: number; end: number }>> {
+      const text =
+        typeof request === "string"
+          ? request
+          : Array.isArray(request)
+            ? request[0] ?? ""
+            : request.texts[0] ?? "";
+      const requestEntities =
+        typeof request === "object" && request !== null && "entities" in request
+          ? request.entities
+          : undefined;
+      const labels =
+        Array.isArray(maybeEntities)
+          ? maybeEntities
+          : requestEntities ?? [];
       const results: Array<{ text: string; label: string; score: number; start: number; end: number }> = [];
 
       // Simulate entity detection for "John Smith"
@@ -65,11 +160,21 @@ vi.mock("gliner", () => {
 
 import { GlinerEngine } from "../src/engines/gliner.js";
 
+const TEST_ONNX_MODEL_PATH = path.join(os.tmpdir(), "fogclaw-gliner-model-test.onnx");
+
+beforeAll(async () => {
+  await fs.writeFile(TEST_ONNX_MODEL_PATH, "mock-onnx-model", "utf8");
+});
+
+afterAll(async () => {
+  await fs.unlink(TEST_ONNX_MODEL_PATH).catch(() => undefined);
+});
+
 describe("GlinerEngine", () => {
   let engine: GlinerEngine;
 
   beforeEach(async () => {
-    engine = new GlinerEngine("onnx-community/gliner_small-v2.5", 0.5);
+    engine = new GlinerEngine(TEST_ONNX_MODEL_PATH, 0.5);
     await engine.initialize();
   });
 
@@ -166,7 +271,7 @@ describe("GlinerEngine", () => {
   });
 
   it("reports isInitialized correctly", async () => {
-    const freshEngine = new GlinerEngine("some-model", 0.5);
+    const freshEngine = new GlinerEngine(TEST_ONNX_MODEL_PATH, 0.5);
     expect(freshEngine.isInitialized).toBe(false);
 
     await freshEngine.initialize();

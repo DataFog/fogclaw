@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 // Mock the gliner npm package so we don't need the actual model
 vi.mock("gliner", () => {
@@ -6,10 +9,25 @@ vi.mock("gliner", () => {
     Gliner: class MockGliner {
       async initialize() {}
       async inference(
-        text: string,
-        labels: string[],
-        _opts: { threshold: number },
+        request: { texts: string[]; entities: string[] } | string | string[],
+        maybeEntities?: string[],
+        _flatNer = false,
+        _threshold = 0.5,
       ) {
+        const text =
+          typeof request === "string"
+            ? request
+            : Array.isArray(request)
+              ? request[0] ?? ""
+              : request.texts[0] ?? "";
+        const requestEntities =
+          typeof request === "object" && request !== null && "entities" in request
+            ? request.entities
+            : undefined;
+        const labels =
+          Array.isArray(maybeEntities)
+            ? maybeEntities
+            : requestEntities ?? [];
         const results: any[] = [];
 
         // Simulate person detection for "John Smith"
@@ -39,7 +57,64 @@ vi.mock("gliner", () => {
         // Only return results whose labels are requested
         return results.filter((r) => labels.includes(r.label));
       }
-    },
+    }
+  };
+});
+
+vi.mock("gliner/node", () => {
+  return {
+    Gliner: class MockGliner {
+      async initialize() {}
+      async inference(
+        request: { texts: string[]; entities: string[] } | string | string[],
+        maybeEntities?: string[],
+        _flatNer = false,
+        _threshold = 0.5,
+      ) {
+        const text =
+          typeof request === "string"
+            ? request
+            : Array.isArray(request)
+              ? request[0] ?? ""
+              : request.texts[0] ?? "";
+        const requestEntities =
+          typeof request === "object" && request !== null && "entities" in request
+            ? request.entities
+            : undefined;
+        const labels =
+          Array.isArray(maybeEntities)
+            ? maybeEntities
+            : requestEntities ?? [];
+        const results: any[] = [];
+
+        // Simulate person detection for "John Smith"
+        if (text.includes("John Smith")) {
+          const idx = text.indexOf("John Smith");
+          results.push({
+            text: "John Smith",
+            label: "person",
+            score: 0.95,
+            start: idx,
+            end: idx + 10,
+          });
+        }
+
+        // Simulate organization detection for "Acme Corp"
+        if (text.includes("Acme Corp")) {
+          const idx = text.indexOf("Acme Corp");
+          results.push({
+            text: "Acme Corp",
+            label: "organization",
+            score: 0.88,
+            start: idx,
+            end: idx + 9,
+          });
+        }
+
+        // Only return results whose labels are requested
+        return results.filter((r) => labels.includes(r.label));
+      }
+    }
   };
 });
 
@@ -47,8 +122,22 @@ import { Scanner } from "../src/scanner.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
 import type { FogClawConfig } from "../src/types.js";
 
+const TEST_ONNX_MODEL_PATH = path.join(os.tmpdir(), "fogclaw-scanner-gliner-model-test.onnx");
+
+beforeAll(async () => {
+  await fs.writeFile(TEST_ONNX_MODEL_PATH, "mock-onnx-model", "utf8");
+});
+
+afterAll(async () => {
+  await fs.unlink(TEST_ONNX_MODEL_PATH).catch(() => undefined);
+});
+
 function makeConfig(overrides: Partial<FogClawConfig> = {}): FogClawConfig {
-  return { ...DEFAULT_CONFIG, ...overrides };
+  return {
+    ...DEFAULT_CONFIG,
+    model: TEST_ONNX_MODEL_PATH,
+    ...overrides,
+  };
 }
 
 describe("Scanner", () => {

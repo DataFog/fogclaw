@@ -98,115 +98,121 @@ const fogclaw = {
     });
 
     // --- TOOL: On-demand scan ---
-    api.registerTool({
-      id: "fogclaw_scan",
-      description:
-        "Scan text for PII and custom entities. Returns detected entities with types, positions, and confidence scores.",
-      schema: {
-        type: "object",
-        properties: {
-          text: {
-            type: "string",
-            description: "Text to scan for entities",
-          },
-          custom_labels: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "Additional entity labels for zero-shot detection (e.g., ['competitor name', 'project codename'])",
-          },
-        },
-        required: ["text"],
-      },
-      handler: async ({
-        text,
-        custom_labels,
-      }: {
-        text: string;
-        custom_labels?: string[];
-      }) => {
-        const result = await scanner.scan(text, custom_labels);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  entities: result.entities,
-                  count: result.entities.length,
-                  summary:
-                    result.entities.length > 0
-                      ? `Found ${result.entities.length} entities: ${[...new Set(result.entities.map((e) => e.label))].join(", ")}`
-                      : "No entities detected",
-                },
-                null,
-                2,
-              ),
+    api.registerTool(
+      {
+        name: "fogclaw_scan",
+        id: "fogclaw_scan",
+        description:
+          "Scan text for PII and custom entities. Returns detected entities with types, positions, and confidence scores.",
+        schema: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              description: "Text to scan for entities",
             },
-          ],
-        };
-      },
-    });
+            custom_labels: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Additional entity labels for zero-shot detection (e.g., ['competitor name', 'project codename'])",
+            },
+          },
+          required: ["text"],
+        },
+        handler: async ({
+          text,
+          custom_labels,
+        }: {
+          text: string;
+          custom_labels?: string[];
+        }) => {
+          const result = await scanner.scan(text, custom_labels);
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    entities: result.entities,
+                    count: result.entities.length,
+                    summary:
+                      result.entities.length > 0
+                        ? `Found ${result.entities.length} entities: ${[...new Set(result.entities.map((e) => e.label))].join(", ")}`
+                        : "No entities detected",
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        },
+      }
+    );
 
     // --- TOOL: On-demand redact ---
-    api.registerTool({
-      id: "fogclaw_redact",
-      description:
-        "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced.",
-      schema: {
-        type: "object",
-        properties: {
-          text: {
-            type: "string",
-            description: "Text to scan and redact",
-          },
-          strategy: {
-            type: "string",
-            description:
-              'Redaction strategy: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...])',
-            enum: ["token", "mask", "hash"],
-          },
-          custom_labels: {
-            type: "array",
-            items: { type: "string" },
-            description: "Additional entity labels for zero-shot detection",
-          },
-        },
-        required: ["text"],
-      },
-      handler: async ({
-        text,
-        strategy,
-        custom_labels,
-      }: {
-        text: string;
-        strategy?: "token" | "mask" | "hash";
-        custom_labels?: string[];
-      }) => {
-        const result = await scanner.scan(text, custom_labels);
-        const redacted = redact(
-          text,
-          result.entities,
-          strategy ?? config.redactStrategy,
-        );
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  redacted_text: redacted.redacted_text,
-                  entities_found: result.entities.length,
-                  mapping: redacted.mapping,
-                },
-                null,
-                2,
-              ),
+    api.registerTool(
+      {
+        name: "fogclaw_redact",
+        id: "fogclaw_redact",
+        description:
+          "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced.",
+        schema: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              description: "Text to scan and redact",
             },
-          ],
-        };
-      },
-    });
+            strategy: {
+              type: "string",
+              description:
+                'Redaction strategy: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...])',
+              enum: ["token", "mask", "hash"],
+            },
+            custom_labels: {
+              type: "array",
+              items: { type: "string" },
+              description: "Additional entity labels for zero-shot detection",
+            },
+          },
+          required: ["text"],
+        },
+        handler: async ({
+          text,
+          strategy,
+          custom_labels,
+        }: {
+          text: string;
+          strategy?: "token" | "mask" | "hash";
+          custom_labels?: string[];
+        }) => {
+          const result = await scanner.scan(text, custom_labels);
+          const redacted = redact(
+            text,
+            result.entities,
+            strategy ?? config.redactStrategy,
+          );
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    redacted_text: redacted.redacted_text,
+                    entities_found: result.entities.length,
+                    mapping: redacted.mapping,
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        },
+      }
+    );
 
     api.logger?.info(
       `[fogclaw] Plugin registered — guardrail: ${config.guardrail_mode}, model: ${config.model}, custom entities: ${config.custom_entities.length}`,

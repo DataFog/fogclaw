@@ -29,6 +29,22 @@ npm run build
 
 ## Quick Start
 
+### GLiNER first-run setup (no extra steps)
+
+FogClaw automatically downloads the GLiNER ONNX model on first run if it is not already cached locally, then reuses it for all later starts.
+
+What happens on first scan:
+
+1. Tokenizers are downloaded (if needed).
+2. The first available ONNX file from Hugging Face is downloaded to the plugin's local model cache:
+   - `.../node_modules/@xenova/transformers/.cache/<model-repo>/onnx/<selected-model>.onnx`
+   - (This download can take a moment depending on network and selected model size.)
+3. GLiNER starts using local files, so later runs stay fast and offline-friendly.
+
+If the download cannot be performed (network/firewall/auth), FogClaw safely falls back to regex-only mode and continues to protect common structured PII.
+
+If your network requires Hugging Face authentication, export `HF_TOKEN` or `HF_ACCESS_TOKEN` before starting OpenClaw so model files can download.
+
 1. Copy the example config:
 
 ```bash
@@ -144,7 +160,7 @@ Plus any labels you add via `custom_entities` in the config.
 | `enabled` | `boolean` | `true` | Enable/disable the plugin |
 | `guardrail_mode` | `string` | `"redact"` | Default action: `"redact"`, `"block"`, or `"warn"` |
 | `redactStrategy` | `string` | `"token"` | How to redact: `"token"`, `"mask"`, or `"hash"` |
-| `model` | `string` | `"onnx-community/gliner_large-v2.1"` | HuggingFace model path for GLiNER |
+| `model` | `string` | `"onnx-community/gliner_large-v2.1"` | HuggingFace model path for GLiNER (or a local `.onnx` path for advanced setups). |
 | `confidence_threshold` | `number` | `0.5` | Minimum confidence for GLiNER detections (0-1) |
 | `custom_entities` | `string[]` | `[]` | Custom entity labels for zero-shot detection |
 | `entityActions` | `object` | `{}` | Per-entity-type action overrides |

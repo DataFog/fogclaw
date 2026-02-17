@@ -13,6 +13,9 @@ FogClaw is an OpenClaw plugin that protects agent workflows by detecting and han
 
 It provides both proactive guardrail behavior (via the `before_agent_start` hook) and explicit tools:
 
+- GLiNER ONNX artifacts are provisioned automatically on first run (no manual `download` step required).
+- If the model cannot be downloaded (offline or restricted network), FogClaw continues in regex-only mode.
+
 - `fogclaw_scan`: scans text for PII and custom entities.
 - `fogclaw_redact`: scans and redacts sensitive matches.
 
@@ -59,6 +62,7 @@ Set plugin config under `plugins.entries.fogclaw.config`:
           enabled: true,
           guardrail_mode: "redact",
           redactStrategy: "token",
+          model: "onnx-community/gliner_large-v2.1",
           confidence_threshold: 0.5,
           custom_entities: ["project codename", "competitor name"],
           entityActions: {

@@ -1,6 +1,6 @@
 {
   "name": "@datafog/fogclaw",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "OpenClaw plugin for PII detection & custom entity redaction powered by DataFog",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "gliner": "^0.0.19",
-    "onnxruntime-node": "^1.20.0"
+    "onnxruntime-node": "1.19.2",
+    "onnxruntime-web": "1.21.0",
+    "sharp": "0.34.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -29,17 +31,13 @@
       "./dist/index.js"
     ]
   },
-  "peerDependencies": {
-    "openclaw": ">=2026.1.0"
-  },
-  "peerDependenciesMeta": {
-    "openclaw": {
-      "optional": true
-    }
-  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/datafog/fogclaw"
+    "url": "git+https://github.com/datafog/fogclaw.git"
+  },
+  "overrides": {
+    "onnxruntime-web": "1.21.0",
+    "sharp": "0.34.5"
   }
 }
