@@ -18,7 +18,7 @@ FogClaw uses a dual-engine approach: battle-tested regex patterns for structured
 
 ```bash
 # From the OpenClaw CLI
-openclaw plugins install @datafog/fogclaw
+openclaw plugins install @openclaw/fogclaw
 
 # Or manually
 git clone https://github.com/DataFog/fogclaw.git ~/.openclaw/extensions/fogclaw
@@ -56,6 +56,31 @@ cp fogclaw.config.example.json fogclaw.config.json
 ```
 
 3. Enable the plugin in your OpenClaw config and restart.
+
+## Submission Readiness Evidence (Recommended)
+
+These commands are the minimum evidence set for PR review:
+
+```bash
+npm test
+npm run build
+npm run test:plugin-smoke
+npm pkg get openclaw
+npm run build
+node - <<'NODE'
+import plugin from './dist/index.js';
+const result = plugin.register ? 'ok' : 'missing-register';
+console.log(result, plugin.id, plugin.name);
+NODE
+```
+
+Expected output:
+
+- All tests pass.
+- `npm run build` exits with `0` and writes `dist/index.js`.
+- `npm run test:plugin-smoke` passes and confirms hook/tool contracts.
+- `npm pkg get openclaw` shows `{"extensions":["./dist/index.js"]}`.
+- The inline node check prints `ok fogclaw FogClaw`.
 
 ## How It Works
 
@@ -148,7 +173,7 @@ Scan and redact PII/custom entities from text. Returns sanitized text with entit
 FogClaw's core can also be used outside of OpenClaw:
 
 ```typescript
-import { Scanner, redact, loadConfig, DEFAULT_CONFIG } from "@datafog/fogclaw";
+import { Scanner, redact, loadConfig, DEFAULT_CONFIG } from "@openclaw/fogclaw";
 
 const scanner = new Scanner(DEFAULT_CONFIG);
 await scanner.initialize();

@@ -27,21 +27,21 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
 - [x] (2026-02-16T17:41:05Z) P3 [Baseline] Ran `npm test` and confirmed current tests are green.
 - [x] (2026-02-16T17:41:10Z) P4 [Baseline] Ran `npm run build` and confirmed TypeScript emits cleanly.
 - [x] (2026-02-16T17:50:00Z) P5 [Scope Alignment] Locked focus to the `@openclaw/fogclaw` branch/package for this iteration and documented `@datafog/fogclaw` as out-of-scope unless requested.
-- [ ] (2026-02-16T17:50:30Z) P6 [M1] Validate and, if needed, normalize package/manifest alignment for official submission expectations.
-- [ ] (2026-02-16T17:51:00Z) P7 [M2] Add deterministic plugin verification commands and reviewer evidence outputs.
-- [ ] (2026-02-16T17:51:30Z) P8 [M3] Prepare PR-facing submission evidence docs (what reviewers should run and expected pass markers).
+- [x] (2026-02-16T17:55:00Z) P6 [M1] Validate and normalize package/manifest alignment for the `@openclaw/fogclaw` line (package name + lockfile and public install reference).
+- [x] (2026-02-16T17:55:20Z) P7 [M2] Add deterministic plugin verification commands and reviewer evidence outputs.
+- [x] (2026-02-16T17:55:40Z) P8 [M3] Add PR-facing submission evidence docs in README, including expected pass markers and smoke commands.
 - [x] (2026-02-16T17:53:20Z) P9 [M4] Identify and populate needed domain-doc updates, then finalize handoff sections for transition.
 
 ## Surprises & Discoveries
 
-- Observation: This branch is currently configured with `name: "@openclaw/fogclaw"` in `package.json`, while `package-lock.json` and README installation examples still reference `@datafog/fogclaw`.
-  Evidence: `package.json` root `name` entry is `@openclaw/fogclaw`; `package-lock.json` root package and `README.md` still mention `@datafog/fogclaw`.
+- Observation: The branch now has a consistent package identity for submission scope: `package.json`, `package-lock.json`, and README install command all use `@openclaw/fogclaw`.
+  Evidence: `package.json`, `package-lock.json`, and `README.md` now resolve to `@openclaw/fogclaw` for package-facing guidance.
 
-- Observation: Plugin bootstrap behavior in `src/index.ts` already uses an OpenClaw-compatible default export object with `register(api)` and calls to `api.on("before_agent_start", ...)` plus `api.registerTool(...)`.
-  Evidence: `src/index.ts` defines `const fogclaw = { id: "fogclaw", name: "FogClaw", register(api) { ... } }` and `export default fogclaw`.
+- Observation: Plugin bootstrap behavior in `src/index.ts` is OpenClaw-compatible and now covered by explicit contract tests.
+  Evidence: `src/index.ts` defines `const fogclaw = { id: "fogclaw", name: "FogClaw", register(api) { ... } }` and `plugin-smoke.test.ts` verifies `api.on("before_agent_start", ...)` plus both tool registrations.
 
-- Observation: There is no existing automated smoke test that simulates OpenClaw API registration from a clean environment, so submission reviewers must currently infer behavior from code and unit tests.
-  Evidence: tests currently cover scanner/regex/redactor/config paths, but no OpenClaw plugin API shim test exists.
+- Observation: A dedicated plugin smoke test now simulates OpenClaw API registration and confirms deterministic hook/tool behavior without requiring external model download.
+  Evidence: `tests/plugin-smoke.test.ts` passes in CI-style unit test execution with all assertions on mock API output.
 
 ## Decision Log
 
@@ -140,7 +140,7 @@ Expected:
 
 From repo root:
 
-    rg -n 'openclaw plugins install|fogclaw\.plugin\.json|export default fogclaw|register\(api\)' README.md src/openclaw.plugin.json src/index.ts docs
+    rg -n 'openclaw plugins install|fogclaw\.plugin\.json|export default fogclaw|register\(api\)' README.md openclaw.plugin.json src/index.ts docs
 
 Expected:
 
@@ -209,11 +209,18 @@ Expected output summary:
 
     All tests pass and tsc compile succeeds.
 
-Planned evidence artifacts:
+Planned and captured evidence artifacts:
 
-- A new section in README or docs describing exact reviewer commands for plugin smoke verification.
-- Test output from plugin contract smoke run.
-- Evidence that package identity lines in `package.json`, `package-lock.json`, and install instructions are aligned for this branch.
+- `npm test` runs `98` existing tests plus the new plugin smoke test (`101` total), all passing.
+- `npm run build` succeeds with no TypeScript errors and emits `dist/index.js`.
+- `npm run test:plugin-smoke` passes with:
+  - `FogClaw OpenClaw plugin contract` hook registration validated
+  - scan tool output JSON shape validated
+  - redact tool output validation validated
+- `npm pkg get openclaw` returns `{"extensions":["./dist/index.js"]}`.
+- `node` smoke import check prints `true fogclaw FogClaw`.
+- Package identity mismatch resolved for branch target: `package.json`, `package-lock.json`, and README installation example now use `@openclaw/fogclaw`.
+
 
 ## Interfaces and Dependencies
 
@@ -257,3 +264,5 @@ Third-party dependencies relevant to this plan:
 - 2026-02-16T17:50:00Z: Aligned planning scope to `@openclaw/fogclaw` explicitly based on user instruction; marked `@datafog/fogclaw` references as historical/out-of-scope for this iteration.
 - 2026-02-16T17:50:15Z: Replaced incomplete/partial plan draft with a complete PLANS.md-compliant structure, including all required sections and milestone sequence.
 - 2026-02-16T17:53:20Z: Completed end-of-`he-plan` domain-doc population (`docs/SECURITY.md`, `docs/RELIABILITY.md`) with repository-specific submission-safety rules and recovery/rollback guidance.
+- 2026-02-16T17:55:50Z: Executed he-plan follow-through by adding package identity + lockfile alignment for `@openclaw/fogclaw`, adding `tests/plugin-smoke.test.ts` for hook/tool contract verification, and documenting submission-ready evidence commands in `README.md`.
+
