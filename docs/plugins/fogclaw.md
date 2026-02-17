@@ -19,7 +19,7 @@ It provides both proactive guardrail behavior (via the `before_agent_start` hook
 ## Install
 
 ```bash
-openclaw plugins install @openclaw/fogclaw
+openclaw plugins install @datafog/fogclaw
 ```
 
 After install, restart the Gateway and enable/configure `plugins.entries.fogclaw`.
@@ -29,7 +29,7 @@ After install, restart the Gateway and enable/configure `plugins.entries.fogclaw
 The package exports the plugin manifest and entry as:
 
 - plugin id: `fogclaw`
-- package name: `@openclaw/fogclaw`
+- package name: `@datafog/fogclaw`
 - extension entry: `./dist/index.js`
 
 ## What it scans

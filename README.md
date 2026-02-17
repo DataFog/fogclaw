@@ -18,7 +18,7 @@ FogClaw uses a dual-engine approach: battle-tested regex patterns for structured
 
 ```bash
 # From the OpenClaw CLI
-openclaw plugins install @openclaw/fogclaw
+openclaw plugins install @datafog/fogclaw
 
 # Or manually
 git clone https://github.com/DataFog/fogclaw.git ~/.openclaw/extensions/fogclaw
@@ -173,7 +173,7 @@ Scan and redact PII/custom entities from text. Returns sanitized text with entit
 FogClaw's core can also be used outside of OpenClaw:
 
 ```typescript
-import { Scanner, redact, loadConfig, DEFAULT_CONFIG } from "@openclaw/fogclaw";
+import { Scanner, redact, loadConfig, DEFAULT_CONFIG } from "@datafog/fogclaw";
 
 const scanner = new Scanner(DEFAULT_CONFIG);
 await scanner.initialize();
