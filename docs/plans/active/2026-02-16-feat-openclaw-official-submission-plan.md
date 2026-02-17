@@ -31,6 +31,7 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
 - [x] (2026-02-16T17:55:20Z) P7 [M2] Add deterministic plugin verification commands and reviewer evidence outputs.
 - [x] (2026-02-16T17:55:40Z) P8 [M3] Add PR-facing submission evidence docs in README, including expected pass markers and smoke commands.
 - [x] (2026-02-16T17:53:20Z) P9 [M4] Identify and populate needed domain-doc updates, then finalize handoff sections for transition.
+- [ ] (2026-02-16T17:59:10Z) P10 [Gate] Add a non-mocked execution-level plugin contract validation (or explicit reviewed exception) to close `C-1`.
 
 ## Surprises & Discoveries
 
@@ -61,13 +62,17 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
   Rationale: This respects work isolation while matching your request to focus on the @openclaw branch.
   Date/Author: 2026-02-16T17:56:00Z / sidmohan
 
+- Decision: Pause release handoff and route back to `he-implement` because a high-priority review finding (C-1) is unresolved.
+  Rationale: Evidence required for submission should include at least one non-mocked plugin contract execution path; current smoke coverage is still mock-only.
+  Date/Author: 2026-02-16T17:59:00Z / sidmohan
+
 ## Outcomes & Retrospective
 
 - Baseline was verified and stabilized before changes: tests and build passed.
 - Submission readiness work for `@openclaw/fogclaw` is complete in-code and test-verified.
 - Core entity detection behavior was intentionally unchanged; release-risk now centers on documentation and reviewer-facing reproducibility.
-- All acceptance evidence can now be reproduced on a clean checkout from this branch.
-- Outstanding follow-up is review validation only (`he-review`), not implementation.
+- Acceptance evidence was reproduced on a clean checkout for the current unit-level verification set.
+- A high-priority review finding requires an `he-implement` follow-up to add non-mocked contract proof before release.
 
 ## Context and Orientation
 
@@ -277,17 +282,85 @@ Third-party dependencies relevant to this plan:
 
 ## Review Findings
 
-- pending (to be filled by `he-review`)
+### Correctness
+
+| ID | Priority | Location | Summary |
+|---|---|---|---|
+| C-1 | high | `tests/plugin-smoke.test.ts:1-140` | Contract coverage relies entirely on a mocked `Scanner` path, so plugin registration/guardrail/tool behavior is not exercised against real plugin execution semantics. |
+
+#### C-1: Plugin smoke test is mock-only and does not prove real plugin execution semantics
+
+The new smoke test verifies handler wiring and output shapes by replacing `Scanner` with a mocked implementation, so failures in `src/scanner.ts`, dependency initialization, or OpenClaw invocation timing issues could be missed. This leaves acceptance criterion “submitter can verify plugin contract end-to-end” only partially covered by unit behavior.
+
+Required action: add one non-mocked execution-level check that runs the same plugin registration path with a real `Scanner` object (or a dedicated plugin harness) and asserts redaction/hook behavior from an actual scan path in this repo.
+
+Owner: sidmohan
+
+**N/A items**: Migration safety (no migrations), data persistence correctness (no DB), concurrency ordering (no shared mutable state across request handlers in this change).
+
+### Architecture / Invariants
+
+| ID | Priority | Location | Summary |
+|---|---|---|---|
+| None | — | — | No architectural regressions identified in this review window. |
+
+No findings.
+
+**N/A items**: Dependency management (no new runtime dependency), API boundaries (no schema changes), migration path (no migrations), observability hooks (no new production observability path).
+
+### Security
+
+| ID | Priority | Location | Summary |
+|---|---|---|---|
+| None | — | — | No new security-sensitive input paths or secret-handling changes were introduced. |
+
+No findings.
+
+**N/A items**: Authentication/authorization (plugin runtime unchanged), command execution, HTML rendering, SQL/query surfaces (not present in this change).
+
+### Data Integrity / Privacy
+
+| ID | Priority | Location | Summary |
+|---|---|---|---|
+| None | — | — | No direct data persistence, migration, or data model changes in this initiative. |
+
+No findings.
+
+**N/A items**: Transactionality, soft deletes, retention policy, exports (no persisted data or new persistence surface introduced).
+
+### Simplicity
+
+| ID | Priority | Location | Summary |
+|---|---|---|---|
+| None | — | — | The change set is narrowly scoped and follows existing TypeScript patterns. |
+
+No findings.
+
+**N/A items**: Speculative abstractions (no speculative architecture added), circular abstractions (none), one-off style divergence (minimal and scoped to plugin smoke/README evidence).
+
+### Summary
+
+1 high, 0 critical, 0 medium, 0 low.
+
+### Gate Decision
+
+**BLOCKED** — `C-1` blocks progression because acceptance relies on mock-based proof for plugin contract behavior, and this repo does not document an explicit integration-test exception.
+
+Blocking findings added to `Progress` and routed back to `he-implement`:
+
+- C-1: Add non-mocked execution-level plugin contract validation.
+
+Medium/low findings to tech debt tracker: none.
 
 ## Verify/Release Decision
 
-- decision: pending
-- date:
-- open findings by priority (if any):
-- evidence:
-- rollback:
-- post-release checks:
-- owner:
+- decision: blocked
+- date: 2026-02-16T17:59:00Z
+- open findings by priority (if any): C-1 (high)
+- evidence: `npm test`, `npm run test:plugin-smoke`, `npm run build`, `npm pkg get openclaw`, plugin import smoke check
+- rollback: revert review blocking commit `cef9122` after re-implementing non-mocked contract test, then rerun baseline evidence
+- post-release checks: n/a until gate is passed
+- owner: sidmohan
 
 ## Revision Notes
 
@@ -295,5 +368,6 @@ Third-party dependencies relevant to this plan:
 - 2026-02-16T17:50:15Z: Replaced incomplete/partial plan draft with a complete PLANS.md-compliant structure, including all required sections and milestone sequence.
 - 2026-02-16T17:53:20Z: Completed end-of-`he-plan` domain-doc population (`docs/SECURITY.md`, `docs/RELIABILITY.md`) with repository-specific submission-safety rules and recovery/rollback guidance.
 - 2026-02-16T17:55:50Z: Executed he-plan follow-through by adding package identity + lockfile alignment for `@openclaw/fogclaw`, adding `tests/plugin-smoke.test.ts` for hook/tool contract verification, and documenting submission-ready evidence commands in `README.md`.
-- 2026-02-16T17:56:20Z: Executed he-implement batch: validated workspace isolation assumptions, reran smoke/build/test evidence commands, and updated plan living sections to mark all milestones complete and implementation phase-ready for review handoff.
+- 2026-02-16T17:56:20Z: Executed he-implement batch: validated workspace isolation assumptions, reran smoke/build/test evidence commands, and updated plan living sections to mark all milestones complete and implementation phase-ready for review.
+- 2026-02-16T17:59:00Z: Completed `he-review` pass and recorded findings; blocked transition due high finding `C-1` (`plugin-smoke.test.ts` depends on mocked `Scanner` and does not provide non-mocked execution-level contract validation).
 
