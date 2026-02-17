@@ -181,6 +181,9 @@ Rollback during this initiative is low-risk: no functional code changes are plan
   - Required template source: `.github/pull_request_template.md`.
   - Plugin release scope constraints used from `docs/reference/RELEASING.md` (npm plugin scope + existing plugin list expectations).
 
+- Registry/installability note:
+  - `npm view @openclaw/fogclaw version` currently returns `E404` (package not yet visible in registry from this environment). Actual runtime/installability remains coupled to maintainer publish flow. This is intentionally tracked as evidence gap outside plugin logic scope.
+
 ## Interfaces and Dependencies
 
 No new runtime interfaces are introduced in this initiative. The key artifacts to reference are:
