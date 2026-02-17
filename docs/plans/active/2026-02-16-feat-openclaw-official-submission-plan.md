@@ -284,10 +284,12 @@ Third-party dependencies relevant to this plan:
 
 ## Pull Request
 
-- pr: (populate in transition)
-- branch:
-- commit:
+- pr: https://github.com/DataFog/fogclaw/pull/1
+- branch: openclaw-plugin-submission
+- commit: 6a763118346041b0cc02a438f7fd2177a948c7ef
 - ci:
+  - Docs Drift Gate: pass
+  - Docs Lint: pass
 
 ## Review Findings
 
@@ -354,12 +356,18 @@ Medium/low findings to tech debt tracker: none.
 
 ## Verify/Release Decision
 
-- decision: pass
-- date: 2026-02-16T18:05:00Z
+- decision: GO
+- date: 2026-02-16T18:07:00Z
 - open findings by priority (if any): none
-- evidence: `npm test`, `npm run test:plugin-smoke`, `npm run build`, `npm pkg get openclaw`, plugin import smoke check
-- rollback: restore commit `669058c` and rerun evidence sequence if regression is introduced by future changes
-- post-release checks: run `npm test`, `npm run test:plugin-smoke`, and confirm this review section remains clean after release
+- evidence: 
+  - `npm test`
+  - `npm run test:plugin-smoke`
+  - `npm run build`
+  - `npm pkg get openclaw`
+  - node import smoke check (`true fogclaw FogClaw`)
+  - `gh pr checks` (all current checks green)
+- rollback: restore commit `6a76311` and rerun evidence sequence
+- post-release checks: run `npm test`, `npm run test:plugin-smoke`, and rerun `gh pr checks` on `main` after merge
 - owner: sidmohan
 
 ## Revision Notes
@@ -373,3 +381,4 @@ Medium/low findings to tech debt tracker: none.
 - 2026-02-16T18:00:10Z: Addressed `C-1` by rewriting plugin contract smoke test to non-mocked execution and updated gate-related plan sections.
 - 2026-02-16T18:05:00Z: Re-ran full evidence sequence (`npm test`, `npm run build`, `npm run test:plugin-smoke`) and cleared review block in plan.
 - 2026-02-16T18:05:00Z: Follow-up `he-review` pass completed with PASS; no open findings.
+- 2026-02-16T18:07:00Z: Completed `he-github` PR open + `gh pr checks` pass; transitioned to `he-verify-release` with no open findings.
