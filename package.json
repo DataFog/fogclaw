@@ -23,6 +23,17 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "openclaw": {
+    "extensions": ["./dist/index.js"]
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
