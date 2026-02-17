@@ -286,7 +286,8 @@ Third-party dependencies relevant to this plan:
 
 - pr: https://github.com/DataFog/fogclaw/pull/1
 - branch: openclaw-plugin-submission
-- commit: e2f1322a1428922e6e5d129242f6dee24a5c20c1
+- commit: 3deae344d41b103d3ee084619e6fb6b3e1bc1a82 (merge commit)
+- merged: 2026-02-17T01:53:23Z
 - ci:
   - Docs Drift Gate: pass
   - Docs Lint: pass
@@ -382,3 +383,4 @@ Medium/low findings to tech debt tracker: none.
 - 2026-02-16T18:05:00Z: Re-ran full evidence sequence (`npm test`, `npm run build`, `npm run test:plugin-smoke`) and cleared review block in plan.
 - 2026-02-16T18:05:00Z: Follow-up `he-review` pass completed with PASS; no open findings.
 - 2026-02-16T18:07:00Z: Completed `he-github` PR open + `gh pr checks` pass; transitioned to `he-verify-release` with no open findings.
+- 2026-02-17T01:53:23Z: PR merged to `main` on DataFog/fogclaw (`#1`) after required checks remained green.
