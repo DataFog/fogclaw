@@ -27,6 +27,8 @@ openclaw plugins install @datafog/fogclaw
 
 After install, restart the Gateway and enable/configure `plugins.entries.fogclaw`.
 
+A moderately technical user can also manage this in the OpenClaw **Control UI** (`openclaw dashboard`) under Config; the plugin schema now exposes labeled fields for `guardrail_mode`, `redactStrategy`, and related policy options in the UI form.
+
 ## Plugin entry
 
 The package exports the plugin manifest and entry as:

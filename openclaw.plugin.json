@@ -6,7 +6,10 @@
   "configSchema": {
     "type": "object",
     "properties": {
-      "enabled": { "type": "boolean", "default": true },
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
       "guardrail_mode": {
         "type": "string",
         "enum": ["redact", "block", "warn"],
@@ -29,7 +32,9 @@
       },
       "custom_entities": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "default": []
       },
       "entityActions": {
@@ -40,6 +45,39 @@
         },
         "default": {}
       }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable FogClaw",
+      "help": "Enable or disable the plugin without uninstalling it."
+    },
+    "guardrail_mode": {
+      "label": "Guardrail Mode",
+      "help": "Default action for detections: redact, block, or warn."
+    },
+    "redactStrategy": {
+      "label": "Redaction Strategy",
+      "help": "How sensitive values are replaced in message context before the agent sees them."
+    },
+    "model": {
+      "label": "GLiNER Model",
+      "help": "Model used for zero-shot detection (defaults to onnx-community/gliner_large-v2.1).",
+      "advanced": true
+    },
+    "confidence_threshold": {
+      "label": "Confidence Threshold",
+      "help": "Minimum GLiNER score (0-1) required before an entity is treated as a detection.",
+      "advanced": true
+    },
+    "custom_entities": {
+      "label": "Custom Entity Labels",
+      "help": "Extra labels to detect as sensitive entities (for example: `project code`, `competitor name`)."
+    },
+    "entityActions": {
+      "label": "Entity Actions",
+      "help": "Map specific entity labels to per-entity behavior (for example: {\"EMAIL\": \"block\", \"PHONE\": \"redact\"}).",
+      "advanced": true
     }
   }
 }
