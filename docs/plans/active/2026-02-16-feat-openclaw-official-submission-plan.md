@@ -30,7 +30,7 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
 - [ ] (2026-02-16T17:50:30Z) P6 [M1] Validate and, if needed, normalize package/manifest alignment for official submission expectations.
 - [ ] (2026-02-16T17:51:00Z) P7 [M2] Add deterministic plugin verification commands and reviewer evidence outputs.
 - [ ] (2026-02-16T17:51:30Z) P8 [M3] Prepare PR-facing submission evidence docs (what reviewers should run and expected pass markers).
-- [ ] (2026-02-16T17:52:00Z) P9 [M4] Identify and populate needed domain-doc updates, then finalize handoff sections for transition.
+- [x] (2026-02-16T17:53:20Z) P9 [M4] Identify and populate needed domain-doc updates, then finalize handoff sections for transition.
 
 ## Surprises & Discoveries
 
@@ -256,3 +256,4 @@ Third-party dependencies relevant to this plan:
 
 - 2026-02-16T17:50:00Z: Aligned planning scope to `@openclaw/fogclaw` explicitly based on user instruction; marked `@datafog/fogclaw` references as historical/out-of-scope for this iteration.
 - 2026-02-16T17:50:15Z: Replaced incomplete/partial plan draft with a complete PLANS.md-compliant structure, including all required sections and milestone sequence.
+- 2026-02-16T17:53:20Z: Completed end-of-`he-plan` domain-doc population (`docs/SECURITY.md`, `docs/RELIABILITY.md`) with repository-specific submission-safety rules and recovery/rollback guidance.
