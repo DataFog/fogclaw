@@ -57,11 +57,17 @@ A reviewer should be able to take a clean checkout of this branch, run the docum
   Rationale: `docs/PLANS.md` requires domain-doc population for handoff and this work introduces publication and trust constraints that should be documented.
   Date/Author: 2026-02-16T17:50:10Z / sidmohan
 
+- Decision: Execute implementation on the dedicated initiative branch `openclaw-plugin-submission` (no default-branch edits) after user explicitly scoped work to this track.
+  Rationale: This respects work isolation while matching your request to focus on the @openclaw branch.
+  Date/Author: 2026-02-16T17:56:00Z / sidmohan
+
 ## Outcomes & Retrospective
 
-- Current baseline is stable: green tests and clean build provide a low-risk starting point.
-- The plan confirms there are no unresolved core engine failures blocking submission readiness.
-- The remaining risks are purely packaging, verification, and evidence quality for maintainers, especially naming consistency (`@openclaw` vs `@datafog`) and reproducibility of plugin registration.
+- Baseline was verified and stabilized before changes: tests and build passed.
+- Submission readiness work for `@openclaw/fogclaw` is complete in-code and test-verified.
+- Core entity detection behavior was intentionally unchanged; release-risk now centers on documentation and reviewer-facing reproducibility.
+- All acceptance evidence can now be reproduced on a clean checkout from this branch.
+- Outstanding follow-up is review validation only (`he-review`), not implementation.
 
 ## Context and Orientation
 
@@ -119,7 +125,7 @@ From repo root:
 
 Expected:
 
-    ✓ tests/... (all passing)
+    ✓ tests/... (all passing, including plugin-smoke contract test)
 
 From repo root:
 
@@ -157,7 +163,10 @@ Expected:
 From repo root:
 
     npm run build
-    node -e "const plugin = (await import('./dist/index.js')).default; console.log(typeof plugin?.register === 'function', plugin?.id, plugin?.name)"
+    node - <<'NODE'
+import plugin from './dist/index.js';
+console.log(typeof plugin?.register === 'function', plugin?.id, plugin?.name);
+NODE
 
 Expected:
 
@@ -165,7 +174,7 @@ Expected:
 
 From repo root (to be executed after adding a lightweight plugin-contract smoke test):
 
-    npm test -- tests/openclaw-plugin-smoke.test.ts
+    npm run test:plugin-smoke
 
 Expected:
 
@@ -208,6 +217,27 @@ Repository baseline evidence:
 Expected output summary:
 
     All tests pass and tsc compile succeeds.
+
+Captured evidence artifacts (commands + outputs):
+
+- Build/verification sequence:
+
+    npm run build
+    npm run test
+    npm run test:plugin-smoke
+    npm pkg get openclaw
+    node - <<'NODE'
+import plugin from './dist/index.js';
+console.log(typeof plugin?.register === 'function', plugin?.id, plugin?.name);
+NODE
+
+Observed output highlights:
+
+- `npm run build` succeeds.
+- `npm run test` reports 6 test files and 101 passing.
+- `npm run test:plugin-smoke` reports 3 passing tests.
+- `npm pkg get openclaw` returns `{ "extensions": ["./dist/index.js"] }`.
+- Plugin import check prints `true fogclaw FogClaw`.
 
 Planned and captured evidence artifacts:
 
@@ -265,4 +295,5 @@ Third-party dependencies relevant to this plan:
 - 2026-02-16T17:50:15Z: Replaced incomplete/partial plan draft with a complete PLANS.md-compliant structure, including all required sections and milestone sequence.
 - 2026-02-16T17:53:20Z: Completed end-of-`he-plan` domain-doc population (`docs/SECURITY.md`, `docs/RELIABILITY.md`) with repository-specific submission-safety rules and recovery/rollback guidance.
 - 2026-02-16T17:55:50Z: Executed he-plan follow-through by adding package identity + lockfile alignment for `@openclaw/fogclaw`, adding `tests/plugin-smoke.test.ts` for hook/tool contract verification, and documenting submission-ready evidence commands in `README.md`.
+- 2026-02-16T17:56:20Z: Executed he-implement batch: validated workspace isolation assumptions, reran smoke/build/test evidence commands, and updated plan living sections to mark all milestones complete and implementation phase-ready for review handoff.
 
