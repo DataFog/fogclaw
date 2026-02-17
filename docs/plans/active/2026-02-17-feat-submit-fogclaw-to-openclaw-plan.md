@@ -36,7 +36,10 @@ After this initiative, a reviewer should be able to find a dedicated upstream Op
   Evidence: repo-level review (`.github/pull_request_template.md`) plus `docs/reference/RELEASING.md` plugin scope notes.
 
 - Observation: `DataFog/fogclaw` is not a fork of `openclaw/openclaw`, so direct cross-repo PR creation from that repo was not possible via `gh`.
-  Resolution: used fork source `sidmohan0/openclaw` to open PR `#18779` into upstream.
+  Resolution at the time: used fork source `sidmohan0/openclaw` to open PR `#18779` into upstream.
+
+- Observation: A DataFog-owned OpenClaw fork improves ownership alignment for future external submissions.
+  Resolution: created `DataFog/openclaw` fork and moved upstream submission PR to come from `DataFog:openclaw-upstream-submission` (PR `#18791`).
 
 ## Decision Log
 
@@ -48,9 +51,13 @@ After this initiative, a reviewer should be able to find a dedicated upstream Op
   Rationale: Submission evidence must be reproducible and match what was already validated in the internal PR phase.
   Date/Author: 2026-02-17T01:58:00Z / sidmohan
 
-- Decision: Use standard upstream PR delivery on `openclaw/openclaw` and open from a true fork (`sidmohan0/openclaw`) rather than the DataFog repo.
+- Decision: Use standard upstream PR delivery on `openclaw/openclaw` and open from a true fork rather than the DataFog repo.
   Rationale: `DataFog/fogclaw` is not a fork of the target repo, and `gh` blocks non-fork cross-repo PRs with direct refs.
   Date/Author: 2026-02-17T02:29:00Z / sidmohan
+
+- Decision: Prefer a `DataFog`-owned fork (`DataFog/openclaw`) as the canonical upstream fork source for future plugin-submission PRs.
+  Rationale: Ownership alignment and provenance are clearer for external partner submissions when PRs originate from the company/org fork.
+  Date/Author: 2026-02-17T02:46:00Z / sidmohan
 
 ## Outcomes & Retrospective
 
@@ -176,7 +183,8 @@ Rollback during this initiative is low-risk: no functional code changes are plan
   - `npm pkg get openclaw` and import smoke output
 
 - Upstream PR status:
-  - PR opened at `https://github.com/openclaw/openclaw/pull/18779` with submission body + reproducible evidence.
+  - PR `#18779` was created from `sidmohan0/openclaw`, then superseded by PR `#18791` from `DataFog/openclaw` to align with official ownership.
+  - PR `#18791` is now the active upstream request with submission body + reproducible evidence.
   - Target repository: `openclaw/openclaw` (main branch).
   - Required template source: `.github/pull_request_template.md`.
   - Plugin release scope constraints used from `docs/reference/RELEASING.md` (npm plugin scope + existing plugin list expectations).
@@ -198,14 +206,15 @@ The external OpenClaw PR should reference these repo files without changing thei
 
 ## Pull Request
 
-- pr: https://github.com/openclaw/openclaw/pull/18779
-- branch: sidmohan0:openclaw-upstream-submission
-- commit: 2609f9838 (openclaw fork)
-- ci: initiated (openclaw/pull/18779 CI: docs-scope, check-docs, secrets passed; several workflows queued for label/check infra at creation time)
+- pr: https://github.com/openclaw/openclaw/pull/18791
+- branch: DataFog:openclaw-upstream-submission
+- commit: 2609f9838 (fork branch)
+- ci: initiated (openclaw/pull/18791 CI: docs-scope, check-docs, secrets passed; several workflows still queued for label/conformance/format checks at creation time)
 
 ## Review Findings
 
-- P1/P2: no maintainer feedback yet (PR is open, under initial maintainer triage).
+- PR #18779 was intentionally closed and superseded.
+- PR #18791 is now active and in maintainer triage.
 - Pending: check for checklist/approval or requested follow-up once review starts.
 
 ## Verify/Release Decision
@@ -219,8 +228,8 @@ The external OpenClaw PR should reference these repo files without changing thei
   - `npm run test:plugin-smoke`
   - `npm pkg get openclaw`
   - `node` import smoke (`true fogclaw FogClaw`)
-  - upstream PR created: `https://github.com/openclaw/openclaw/pull/18779`
-  - CI snapshot at submit time: `check-docs` / `docs-scope` / `secrets` passed; `label`, `label-issues`, `formal_conformance`, `no-tabs`, second `docs-scope` check still queued
+  - upstream PR created: `https://github.com/openclaw/openclaw/pull/18791`
+  - CI snapshot at submit time: `check-docs` / `docs-scope` / `secrets` passed; `label`, `label-issues`, `formal_conformance`, `no-tabs` checks still queued
 - rollback:
   - Close/recreate PR if maintainers request intake-path correction.
 - post-release checks:
@@ -232,3 +241,4 @@ The external OpenClaw PR should reference these repo files without changing thei
 
 - 2026-02-17T01:58:00Z: Initialized plan from spec `2026-02-17-feat-submit-fogclaw-to-openclaw`. Reason: transition intent to upstream OpenClaw submission as the remaining official readiness step.
 - 2026-02-17T02:28:00Z: Opened upstream submission PR `https://github.com/openclaw/openclaw/pull/18779` from fork `sidmohan0/openclaw` (branch `openclaw-upstream-submission`) with evidence-first PR body and `docs/plugins/fogclaw.md` content only.
+- 2026-02-17T02:47:00Z: Created official DataFog upstream fork `https://github.com/DataFog/openclaw` and moved submission PR ownership to `https://github.com/openclaw/openclaw/pull/18791` (source `DataFog:openclaw-upstream-submission`); closed PR #18779 as superseded.
