@@ -36,7 +36,7 @@ After this initiative, a reviewer should be able to find a dedicated upstream Op
   Evidence: repo-level review (`.github/pull_request_template.md`) plus `docs/reference/RELEASING.md` plugin scope notes.
 
 - Observation: `DataFog/fogclaw` is not a fork of `openclaw/openclaw`, so direct cross-repo PR creation from that repo was not possible via `gh`.
-  Resolution at the time: used fork source `sidmohan0/openclaw` to open PR `#18779` into upstream.
+  Resolution at the time: opened a temporary PR from a personal fork (`#18779`) for speed, then migrated to `DataFog/openclaw` when the org-owned upstream fork became available.
 
 - Observation: A DataFog-owned OpenClaw fork improves ownership alignment for future external submissions.
   Resolution: created `DataFog/openclaw` fork and moved upstream submission PR to come from `DataFog:openclaw-upstream-submission` (PR `#18791`).
@@ -183,7 +183,7 @@ Rollback during this initiative is low-risk: no functional code changes are plan
   - `npm pkg get openclaw` and import smoke output
 
 - Upstream PR status:
-  - PR `#18779` was created from `sidmohan0/openclaw`, then superseded by PR `#18791` from `DataFog/openclaw` to align with official ownership.
+  - PR `#18779` was created from a temporary personal fork and then superseded by PR `#18791` from `DataFog/openclaw` to align with official ownership.
   - PR `#18791` is now the active upstream request with submission body + reproducible evidence.
   - Target repository: `openclaw/openclaw` (main branch).
   - Required template source: `.github/pull_request_template.md`.
@@ -240,5 +240,5 @@ The external OpenClaw PR should reference these repo files without changing thei
 ## Revision Notes
 
 - 2026-02-17T01:58:00Z: Initialized plan from spec `2026-02-17-feat-submit-fogclaw-to-openclaw`. Reason: transition intent to upstream OpenClaw submission as the remaining official readiness step.
-- 2026-02-17T02:28:00Z: Opened upstream submission PR `https://github.com/openclaw/openclaw/pull/18779` from fork `sidmohan0/openclaw` (branch `openclaw-upstream-submission`) with evidence-first PR body and `docs/plugins/fogclaw.md` content only.
+- 2026-02-17T02:28:00Z: Opened initial upstream submission PR `https://github.com/openclaw/openclaw/pull/18779` (temporary personal-fork variant) with evidence-first PR body and `docs/plugins/fogclaw.md` content only.
 - 2026-02-17T02:47:00Z: Created official DataFog upstream fork `https://github.com/DataFog/openclaw` and moved submission PR ownership to `https://github.com/openclaw/openclaw/pull/18791` (source `DataFog:openclaw-upstream-submission`); closed PR #18779 as superseded.

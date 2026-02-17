@@ -25,12 +25,14 @@ Apply this process for a plugin that is already validated in its own repo and ne
 
 ## Prepare upstream fork PR
 
-Because `openclaw/openclaw` generally expects cross-repo PRs from a fork, use this sequence unless the plugin repo is itself an existing fork:
+Because `openclaw/openclaw` generally expects cross-repo PRs from a fork, use this sequence unless the plugin repo is itself an existing fork.
 
-1. Fork `openclaw/openclaw` in your GitHub account.
+1. Use an org-owned fork as the preferred source (for this repository: `DataFog/openclaw`).
 2. Create a branch in the fork (for example `openclaw-fogclaw-submission`).
 3. Copy only official-listing artifacts from the plugin source repo (typically one or more docs/pages under `docs/plugins/`).
 4. Open PR from the fork branch to `openclaw/openclaw` (base `main`).
+
+- If an org-owned fork does not exist yet, use the fastest available forking path to open a temporary PR, then migrate to the org-owned fork once created.
 
 Do **not** include unrelated code changes in this PR unless required by maintainer feedback.
 
