@@ -1,7 +1,7 @@
 ---
 slug: 2026-02-17-feat-pii-access-request-backlog
 status: active
-phase: plan
+phase: implement-complete
 plan_mode: execution
 detail_level: more
 priority: high
@@ -24,31 +24,35 @@ To see it working: start an OpenClaw session with FogClaw enabled, send a messag
 
 ## Progress
 
-- [ ] P1 [M1] Create `AccessRequest` and store types in `src/types.ts`
-- [ ] P2 [M1] Implement `BacklogStore` and `RedactionMapStore` in `src/backlog.ts`
-- [ ] P3 [M1] Write unit tests for `BacklogStore` in `tests/backlog.test.ts`
-- [ ] P4 [M1] Implement `fogclaw_request_access` tool handler in `src/backlog-tools.ts`
-- [ ] P5 [M1] Wire `RedactionMapStore` into existing hooks in `src/index.ts`
-- [ ] P6 [M1] Register `fogclaw_request_access` tool in `src/index.ts`
-- [ ] P7 [M1] Write tests for request tool in `tests/backlog-tools.test.ts`
-- [ ] P8 [M1] Verify M1: agent can submit request and get confirmation ID
-- [ ] P9 [M2] Implement `fogclaw_requests` tool handler (list/filter)
-- [ ] P10 [M2] Implement `fogclaw_resolve` tool handler (approve/deny/follow-up)
-- [ ] P11 [M2] Register both tools in `src/index.ts`
-- [ ] P12 [M2] Write tests for list and resolve tools
-- [ ] P13 [M2] Verify M2: full request→list→resolve cycle, approved request returns original text
-- [ ] P14 [M3] Add audit logging for request lifecycle events
-- [ ] P15 [M3] Add `maxPendingRequests` config option
-- [ ] P16 [M3] Add batch resolve support to `fogclaw_resolve`
-- [ ] P17 [M3] Update `openclaw.plugin.json` with new config field
-- [ ] P18 [M3] Update `fogclaw.config.example.json`
-- [ ] P19 [M3] Update `docs/SECURITY.md` and `docs/OBSERVABILITY.md`
-- [ ] P20 [M3] Run full test suite — all tests pass, no regressions
-- [ ] P21 [M3] Verify M3: feature is production-ready
+- [x] (2026-02-17T18:37:00Z) P1 [M1] Create `AccessRequest` and store types in `src/types.ts`
+- [x] (2026-02-17T18:37:00Z) P2 [M1] Implement `BacklogStore` and `RedactionMapStore` in `src/backlog.ts`
+- [x] (2026-02-17T18:37:00Z) P3 [M1] Write unit tests for `BacklogStore` in `tests/backlog.test.ts` — 25 tests passing
+- [x] (2026-02-17T18:37:00Z) P4 [M1] Implement `fogclaw_request_access` tool handler in `src/backlog-tools.ts`
+- [x] (2026-02-17T18:37:00Z) P5 [M1] Wire `RedactionMapStore` into existing hooks in `src/index.ts`
+- [x] (2026-02-17T18:37:00Z) P6 [M1] Register `fogclaw_request_access` tool in `src/index.ts`
+- [x] (2026-02-17T18:37:00Z) P7 [M1] Write tests for request tool in `tests/backlog-tools.test.ts`
+- [x] (2026-02-17T18:37:33Z) P8 [M1] Verify M1: 48 new tests passing, agent can submit request and get REQ-1 confirmation
+- [x] (2026-02-17T18:37:33Z) P9 [M2] Implement `fogclaw_requests` tool handler (list/filter)
+- [x] (2026-02-17T18:37:33Z) P10 [M2] Implement `fogclaw_resolve` tool handler (approve/deny/follow-up)
+- [x] (2026-02-17T18:37:33Z) P11 [M2] Register both tools in `src/index.ts`
+- [x] (2026-02-17T18:37:33Z) P12 [M2] Write tests for list and resolve tools
+- [x] (2026-02-17T18:37:53Z) P13 [M2] Verify M2: full request→list→resolve cycle works, approved request returns original text
+- [x] (2026-02-17T18:37:33Z) P14 [M3] Add audit logging for request lifecycle events
+- [x] (2026-02-17T18:37:00Z) P15 [M3] Add `maxPendingRequests` config option — pulled forward to M1 since BacklogStore constructor needs it
+- [x] (2026-02-17T18:37:33Z) P16 [M3] Add batch resolve support to `fogclaw_resolve`
+- [x] (2026-02-17T18:38:00Z) P17 [M3] Update `openclaw.plugin.json` with new config field
+- [x] (2026-02-17T18:38:00Z) P18 [M3] Update `fogclaw.config.example.json`
+- [x] (2026-02-17T18:36:00Z) P19 [M3] Update `docs/SECURITY.md` and `docs/OBSERVABILITY.md` — done during he-plan Phase 4.5
+- [x] (2026-02-17T18:38:19Z) P20 [M3] Run full test suite — 213 tests passing, 0 failures, 0 type errors
+- [x] (2026-02-17T18:38:19Z) P21 [M3] Verify M3: feature is production-ready
 
 ## Surprises & Discoveries
 
-(None yet — populated during implementation.)
+- Observation: `maxPendingRequests` needed to be pulled forward from M3 to M1 because `BacklogStore` constructor requires it.
+  Evidence: TypeScript compilation would fail without it since `new BacklogStore(mapStore, config.maxPendingRequests)` references the field.
+
+- Observation: All three milestones could be implemented in a single pass because the tool handler pattern is well-established and all code is purely additive.
+  Evidence: 12 files changed, 1245 insertions, 4 deletions (only the smoke test count assertion changed in existing code).
 
 ## Decision Log
 
@@ -70,7 +74,13 @@ To see it working: start an OpenClaw session with FogClaw enabled, send a messag
 
 ## Outcomes & Retrospective
 
-(Populated at milestones and completion.)
+All three milestones completed in a single implementation pass:
+
+- **M1**: `BacklogStore`, `RedactionMapStore`, and `fogclaw_request_access` tool implemented. Hooks wired to capture redaction mappings. 25 unit tests for store, additional tool tests.
+- **M2**: `fogclaw_requests` (list/filter) and `fogclaw_resolve` (approve/deny/follow-up/batch) tools implemented. Full lifecycle integration tests pass.
+- **M3**: Audit logging, `maxPendingRequests` config, batch resolve, manifest/config/doc updates all complete. 213 total tests, 0 failures, 0 type errors.
+
+The implementation was purely additive — no existing behavior changed. The only modification to existing test assertions was updating the smoke test tool count from 3 to 6.
 
 ## Context and Orientation
 
@@ -230,7 +240,19 @@ To fully revert the feature: remove `src/backlog.ts`, `src/backlog-tools.ts`, `t
 
 ## Artifacts and Notes
 
-(Populated during implementation with test output and evidence snippets.)
+Test run output (final):
+
+    Test Files  11 passed (11)
+         Tests  213 passed (213)
+      Duration  795ms
+
+Type check:
+
+    tsc --noEmit  (clean, no errors)
+
+New test breakdown:
+- tests/backlog.test.ts: 25 tests (RedactionMapStore: 5, BacklogStore: 20)
+- tests/backlog-tools.test.ts: 23 tests (request: 5, list: 6, resolve: 8, lifecycle: 4)
 
 ## Interfaces and Dependencies
 
@@ -296,3 +318,4 @@ Populated by `he-verify-release`.
 ## Revision Notes
 
 - 2026-02-17T00:00:00Z: Initialized plan from spec `2026-02-17-feat-pii-access-request-backlog`. Three milestones: backlog store + request tool, review/resolve tools, polish. Detail level: MORE. Reason: establish PLANS-compliant execution baseline.
+- 2026-02-17T18:38:00Z: All milestones completed. Implementation was purely additive (1245 lines added, 4 changed). maxPendingRequests pulled from M3 to M1 for type-safety. All 213 tests pass. Plan updated with evidence and outcomes.
