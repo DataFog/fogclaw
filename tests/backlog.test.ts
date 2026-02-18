@@ -37,6 +37,34 @@ describe("RedactionMapStore", () => {
     expect(store.size).toBe(0);
     expect(store.getOriginal("[EMAIL_1]")).toBeUndefined();
   });
+
+  it("evicts oldest entries when maxMappings exceeded", () => {
+    const small = new RedactionMapStore(3);
+    small.addMapping({ "[A]": "a", "[B]": "b", "[C]": "c" });
+    expect(small.size).toBe(3);
+
+    small.addMapping({ "[D]": "d", "[E]": "e" });
+    expect(small.size).toBe(3);
+    // Oldest entries ([A], [B]) evicted
+    expect(small.getOriginal("[A]")).toBeUndefined();
+    expect(small.getOriginal("[B]")).toBeUndefined();
+    // Newer entries retained
+    expect(small.getOriginal("[C]")).toBe("c");
+    expect(small.getOriginal("[D]")).toBe("d");
+    expect(small.getOriginal("[E]")).toBe("e");
+  });
+
+  it("respects default maxMappings of 10000", () => {
+    const defaultStore = new RedactionMapStore();
+    // Add under limit — no eviction
+    const mapping: Record<string, string> = {};
+    for (let i = 0; i < 100; i++) {
+      mapping[`[PH_${i}]`] = `value_${i}`;
+    }
+    defaultStore.addMapping(mapping);
+    expect(defaultStore.size).toBe(100);
+    expect(defaultStore.getOriginal("[PH_0]")).toBe("value_0");
+  });
 });
 
 describe("BacklogStore", () => {

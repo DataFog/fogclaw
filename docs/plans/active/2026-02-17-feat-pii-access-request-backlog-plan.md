@@ -301,7 +301,44 @@ Populated by `he-github`.
 
 ## Review Findings
 
-Populated by `he-review`.
+Review date: 2026-02-17. Five parallel reviewers: correctness, architecture, security, data privacy, simplicity.
+
+### Blocking (HIGH)
+
+| ID | Dimension | File/Symbol | Finding | Required Action | Owner |
+|---|---|---|---|---|---|
+| S-17 | Security | `src/backlog.ts:21-45` `RedactionMapStore` | RedactionMapStore grows unboundedly — every redaction mapping is accumulated with no size cap, eviction, or cleanup. Long sessions accumulate PII in memory without limit. | Add `maxMappings` constructor parameter with FIFO eviction when cap is reached. Wire from config or hardcode sensible default (e.g. 10000). Add test for eviction behavior. | implementer |
+
+### Non-blocking (MEDIUM) — routed to tech-debt tracker
+
+| ID | Dimension | File/Symbol | Finding |
+|---|---|---|---|
+| S-1 | Security | `src/backlog-tools.ts` | No length validation on string inputs (placeholder, reason, context). Extremely long strings could cause memory pressure. |
+| S-18 | Security | `src/backlog.ts` `BacklogStore` | Resolved requests with PII in `originalText` are never evicted from the requests map. Terminal-state requests should be prunable. |
+| D-2 | Data | `src/backlog.ts:119-121` | `getRequest()` and `listRequests()` return mutable internal `AccessRequest` references. Callers can mutate store state. |
+| SIM-1 | Simplicity | `src/backlog-tools.ts:160-257` | `createResolveHandler` inner closure exceeds 60 lines. Batch and single paths could be extracted into helpers. |
+
+### Non-blocking (LOW) — routed to tech-debt tracker
+
+| ID | Dimension | File/Symbol | Finding |
+|---|---|---|---|
+| C-1 | Correctness | `src/backlog.ts:98` | `getOriginal()` returning `undefined` is silently stored as `null`. No warning when placeholder is not found in mapping store. |
+| C-2 | Correctness | `tests/backlog-tools.test.ts` | Tests use `vi.fn()` for logger but this is consistent with existing project patterns (not mock-based test logic). N/A for mock policy. |
+| A-1 | Architecture | `src/backlog.ts:66-70` | `pendingCount` iterates all requests on every call. Consider caching for large backlogs. |
+| A-2 | Architecture | `src/backlog-tools.ts:91` | Status string cast uses `as` without runtime exhaustive check after validation. |
+| A-3 | Architecture | `src/index.ts` | RedactionMapStore is created inside `register()` but not exported for external testing. Already mitigated by re-export at module level. |
+| D-1 | Data | `src/backlog.ts:108` | `createdAt` uses `new Date().toISOString()` — not injectable for deterministic testing. |
+| D-3 | Data | `src/backlog-tools.ts` | Audit log entries use string concatenation for JSON. Consider structured logging objects. |
+| SIM-2 | Simplicity | `src/backlog-tools.ts:106-132` | `listRequests` handler maps fields manually. Could use a shared serializer. |
+| SIM-3 | Simplicity | `src/backlog-tools.ts:22-30` | `jsonResponse` and `errorResponse` helpers are fine but could be shared with existing tool handlers. |
+| SIM-4 | Simplicity | `src/backlog.ts:174-187` | `resolveMultiple` wraps `resolveRequest` in try/catch per ID. Simple and correct but could be cleaner with a result type. |
+
+### Priority Gate
+
+- **HIGH findings:** 1 (S-17 — **RESOLVED**: added `maxMappings` constructor parameter with FIFO eviction, default 10000. Tests added for eviction behavior. 215/215 tests pass, 0 type errors.)
+- **MEDIUM findings:** 4 (routed to tech-debt tracker TD-2026-02-17-03 through TD-2026-02-17-06)
+- **LOW findings:** 10 (routed to tech-debt tracker TD-2026-02-17-07 through TD-2026-02-17-10, plus 6 informational)
+- **Gate status:** CLEAR — all HIGH findings resolved, medium/low routed to tech-debt tracker
 
 ## Verify/Release Decision
 
@@ -319,3 +356,4 @@ Populated by `he-verify-release`.
 
 - 2026-02-17T00:00:00Z: Initialized plan from spec `2026-02-17-feat-pii-access-request-backlog`. Three milestones: backlog store + request tool, review/resolve tools, polish. Detail level: MORE. Reason: establish PLANS-compliant execution baseline.
 - 2026-02-17T18:38:00Z: All milestones completed. Implementation was purely additive (1245 lines added, 4 changed). maxPendingRequests pulled from M3 to M1 for type-safety. All 213 tests pass. Plan updated with evidence and outcomes.
+- 2026-02-17T18:56:00Z: he-review completed. 5 parallel reviewers (correctness, architecture, security, data, simplicity). 1 HIGH finding (S-17: unbounded RedactionMapStore) fixed with FIFO eviction + maxMappings=10000 default. 4 MEDIUM + 10 LOW routed to tech-debt tracker. 215/215 tests pass post-fix. Priority gate CLEAR.

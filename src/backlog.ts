@@ -20,12 +20,18 @@ import type { AccessRequest, RequestStatus } from "./types.js";
  */
 export class RedactionMapStore {
   private store = new Map<string, string>();
+  private maxMappings: number;
+
+  constructor(maxMappings = 10_000) {
+    this.maxMappings = maxMappings;
+  }
 
   /** Merge new placeholder → original entries into the store. */
   addMapping(mapping: Record<string, string>): void {
     for (const [placeholder, original] of Object.entries(mapping)) {
       this.store.set(placeholder, original);
     }
+    this.evict();
   }
 
   /** Look up the original text for a redacted placeholder. */
@@ -41,6 +47,17 @@ export class RedactionMapStore {
   /** Number of stored mappings. */
   get size(): number {
     return this.store.size;
+  }
+
+  /** Evict oldest entries (FIFO by Map insertion order) when over capacity. */
+  private evict(): void {
+    if (this.store.size <= this.maxMappings) return;
+    const excess = this.store.size - this.maxMappings;
+    const iter = this.store.keys();
+    for (let i = 0; i < excess; i++) {
+      const key = iter.next().value;
+      if (key !== undefined) this.store.delete(key);
+    }
   }
 }
 
