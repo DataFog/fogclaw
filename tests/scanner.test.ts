@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from "vitest";
+import {
+  beforeAll,
+  beforeEach,
+  afterAll,
+  describe,
+  it,
+  expect,
+  vi,
+} from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -184,6 +192,58 @@ describe("Scanner", () => {
     expect(email).toBeDefined();
     expect(person!.source).toBe("gliner");
     expect(email!.source).toBe("regex");
+  });
+
+  it("applies per-entity confidence threshold overrides", async () => {
+    const strictScanner = new Scanner(
+      makeConfig({
+        entityConfidenceThresholds: {
+          PERSON: 0.98,
+        },
+      }),
+    );
+    await strictScanner.initialize();
+
+    const result = await strictScanner.scan("My name is John Smith.");
+    expect(result.entities.find((e) => e.label === "PERSON")).toBeUndefined();
+  });
+
+  it("supports allowlist exact matches across global and per-entity rules", async () => {
+    const allowlistScanner = new Scanner(
+      makeConfig({
+        allowlist: {
+          values: ["john@example.com"],
+          patterns: ["^internal-"],
+          entities: {
+            PERSON: ["john smith"],
+          },
+        },
+      }),
+    );
+    await allowlistScanner.initialize();
+
+    const result = await allowlistScanner.scan(
+      "John Smith can be reached at john@example.com.",
+    );
+
+    expect(result.entities.find((e) => e.label === "EMAIL")).toBeUndefined();
+    expect(result.entities.find((e) => e.label === "PERSON")).toBeUndefined();
+  });
+
+  it("applies allowlist regex patterns", async () => {
+    const allowlistScanner = new Scanner(
+      makeConfig({
+        allowlist: {
+          values: [],
+          patterns: ["test@example\\.com"],
+          entities: {},
+        },
+      }),
+    );
+    await allowlistScanner.initialize();
+
+    const result = await allowlistScanner.scan("This is test@example.com for redaction.");
+    expect(result.entities.find((e) => e.label === "EMAIL")).toBeUndefined();
   });
 
   it("deduplicates overlapping spans keeping higher confidence", async () => {

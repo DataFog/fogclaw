@@ -1,8 +1,8 @@
 {
   "id": "fogclaw",
   "name": "FogClaw",
-  "version": "0.1.4",
-  "description": "PII detection & custom entity redaction powered by DataFog",
+  "version": "0.1.6",
+  "description": "PII detection & custom entity redaction plugin powered by DataFog",
   "configSchema": {
     "type": "object",
     "properties": {
@@ -30,6 +30,15 @@
         "minimum": 0,
         "maximum": 1
       },
+      "entityConfidenceThresholds": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "default": {}
+      },
       "custom_entities": {
         "type": "array",
         "items": {
@@ -44,6 +53,43 @@
           "enum": ["redact", "block", "warn"]
         },
         "default": {}
+      },
+      "allowlist": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "entities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "default": {
+          "values": [],
+          "patterns": [],
+          "entities": {}
+        }
+      },
+      "auditEnabled": {
+        "type": "boolean",
+        "default": true
       }
     }
   },
@@ -70,6 +116,11 @@
       "help": "Minimum GLiNER score (0-1) required before an entity is treated as a detection.",
       "advanced": true
     },
+    "entityConfidenceThresholds": {
+      "label": "Per-Entity Confidence Thresholds",
+      "help": "Override confidence thresholds by entity label (for example: {\"PERSON\": 0.95, \"ORGANIZATION\": 0.7}).",
+      "advanced": true
+    },
     "custom_entities": {
       "label": "Custom Entity Labels",
       "help": "Extra labels to detect as sensitive entities (for example: `project code`, `competitor name`)."
@@ -77,6 +128,16 @@
     "entityActions": {
       "label": "Entity Actions",
       "help": "Map specific entity labels to per-entity behavior (for example: {\"EMAIL\": \"block\", \"PHONE\": \"redact\"}).",
+      "advanced": true
+    },
+    "allowlist": {
+      "label": "Allowlist / Exemptions",
+      "help": "Global and per-entity allowlist entries to exclude from enforcement. Supports exact values and regex patterns.",
+      "advanced": true
+    },
+    "auditEnabled": {
+      "label": "Audit Logging",
+      "help": "Emit structured audit summaries for guardrail decisions.",
       "advanced": true
     }
   }

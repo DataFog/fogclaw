@@ -4,6 +4,10 @@
   "redactStrategy": "token",
   "model": "onnx-community/gliner_large-v2.1",
   "confidence_threshold": 0.5,
+  "entityConfidenceThresholds": {
+    "PERSON": 0.6,
+    "ORGANIZATION": 0.7
+  },
   "custom_entities": ["project codename", "internal tool name"],
   "entityActions": {
     "SSN": "block",
@@ -11,5 +15,19 @@
     "EMAIL": "redact",
     "PHONE": "redact",
     "PERSON": "warn"
-  }
+  },
+  "allowlist": {
+    "values": [
+      "noreply@example.com"
+    ],
+    "patterns": [
+      "^internal-"
+    ],
+    "entities": {
+      "PERSON": [
+        "john doe"
+      ]
+    }
+  },
+  "auditEnabled": true
 }
