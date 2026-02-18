@@ -9,8 +9,8 @@
 import { RegexEngine } from "./engines/regex.js";
 import { redact } from "./redactor.js";
 import { extractText, replaceText } from "./extract.js";
-import { canonicalType } from "./types.js";
-import type { Entity, FogClawConfig, GuardrailAction } from "./types.js";
+import { canonicalType, resolveAction } from "./types.js";
+import type { Entity, FogClawConfig } from "./types.js";
 
 interface Logger {
   info(msg: string): void;
@@ -55,6 +55,11 @@ function buildAllowlistFilter(config: FogClawConfig): (entity: Entity) => boolea
     entityValues.set(canonical, set);
   }
 
+  // Short-circuit: if no allowlist entries, keep everything
+  if (globalValues.size === 0 && globalPatterns.length === 0 && entityValues.size === 0) {
+    return () => true;
+  }
+
   // Return true if entity should be KEPT (not allowlisted)
   return (entity: Entity): boolean => {
     const normalizedText = entity.text.trim().toLowerCase();
@@ -67,10 +72,6 @@ function buildAllowlistFilter(config: FogClawConfig): (entity: Entity) => boolea
 
     return true;
   };
-}
-
-function resolveAction(entity: Entity, config: FogClawConfig): GuardrailAction {
-  return config.entityActions[entity.label] ?? config.guardrail_mode;
 }
 
 /**

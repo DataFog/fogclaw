@@ -3,6 +3,7 @@ import { redact } from "./redactor.js";
 import { loadConfig } from "./config.js";
 import { RegexEngine } from "./engines/regex.js";
 import { createToolResultHandler } from "./tool-result-handler.js";
+import { resolveAction } from "./types.js";
 import type {
   Entity,
   FogClawConfig,
@@ -23,10 +24,6 @@ export type {
   RedactStrategy,
   GuardrailAction,
 } from "./types.js";
-
-function resolveAction(entity: Entity, config: FogClawConfig): GuardrailAction {
-  return config.entityActions[entity.label] ?? config.guardrail_mode;
-}
 
 function buildGuardrailPlan(entities: Entity[], config: FogClawConfig) {
   const blocked: Entity[] = [];

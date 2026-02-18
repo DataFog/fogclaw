@@ -11,6 +11,16 @@ export type RedactStrategy = "token" | "mask" | "hash";
 
 export type GuardrailAction = "redact" | "block" | "warn";
 
+export interface EntityConfidenceThresholds {
+  [entityType: string]: number;
+}
+
+export interface EntityAllowlist {
+  values: string[];
+  patterns: string[];
+  entities: Record<string, string[]>;
+}
+
 export interface FogClawConfig {
   enabled: boolean;
   guardrail_mode: GuardrailAction;
@@ -19,6 +29,9 @@ export interface FogClawConfig {
   confidence_threshold: number;
   custom_entities: string[];
   entityActions: Record<string, GuardrailAction>;
+  entityConfidenceThresholds: EntityConfidenceThresholds;
+  allowlist: EntityAllowlist;
+  auditEnabled: boolean;
 }
 
 export interface ScanResult {
@@ -30,6 +43,12 @@ export interface RedactResult {
   redacted_text: string;
   mapping: Record<string, string>;
   entities: Entity[];
+}
+
+export interface GuardrailPlan {
+  blocked: Entity[];
+  warned: Entity[];
+  redacted: Entity[];
 }
 
 export const CANONICAL_TYPE_MAP: Record<string, string> = {
@@ -49,4 +68,8 @@ export const CANONICAL_TYPE_MAP: Record<string, string> = {
 export function canonicalType(entityType: string): string {
   const normalized = entityType.toUpperCase().trim();
   return CANONICAL_TYPE_MAP[normalized] ?? normalized;
+}
+
+export function resolveAction(entity: Entity, config: FogClawConfig): GuardrailAction {
+  return config.entityActions[entity.label] ?? config.guardrail_mode;
 }
