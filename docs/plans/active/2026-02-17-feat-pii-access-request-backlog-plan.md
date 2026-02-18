@@ -292,10 +292,10 @@ New test breakdown:
 
 ## Pull Request
 
-- pr: https://github.com/DataFog/fogclaw/pull/2
-- branch: `feat/pii-access-request-backlog`
-- commit: `046a8bc`
-- ci: pending (no CI configured for this repo)
+- pr: https://github.com/DataFog/fogclaw/pull/2 (MERGED)
+- branch: `feat/pii-access-request-backlog` → squash-merged to `main`
+- commit: `c65bac9`
+- ci: Docs Drift Gate pass, Docs Lint pass
 
 ## Review Findings
 
