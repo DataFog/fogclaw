@@ -22,20 +22,24 @@ To verify it works: install FogClaw in OpenClaw, ask the agent to read a file th
 
 ## Progress
 
-- [ ] P1 [M1] Create `src/extract.ts` with `extractText` and `replaceText` functions
-- [ ] P2 [M1] Create `tests/extract.test.ts` covering string content, content block arrays, nested structures, empty/null, and non-text types
-- [ ] P3 [M1] All extract tests pass
-- [ ] P4 [M2] Create `src/tool-result-handler.ts` with synchronous `createToolResultHandler` factory
-- [ ] P5 [M2] Create `tests/tool-result-handler.test.ts` covering scanning, redaction, audit logging, allowlist, and edge cases
-- [ ] P6 [M2] Register `tool_result_persist` hook in `src/index.ts`
-- [ ] P7 [M2] All tool-result-handler tests pass
-- [ ] P8 [M3] Extend `tests/plugin-smoke.test.ts` with `tool_result_persist` hook registration and transformation tests
-- [ ] P9 [M3] Full test suite passes (`pnpm test`)
-- [ ] P10 [M3] Commit all changes
+- [x] (2026-02-17T17:28:00Z) P1 [M1] Create `src/extract.ts` with `extractText` and `replaceText` functions
+- [x] (2026-02-17T17:28:00Z) P2 [M1] Create `tests/extract.test.ts` covering string content, content block arrays, nested structures, empty/null, and non-text types
+- [x] (2026-02-17T17:28:00Z) P3 [M1] All extract tests pass — 27 tests passed
+- [x] (2026-02-17T17:29:00Z) P4 [M2] Create `src/tool-result-handler.ts` with synchronous `createToolResultHandler` factory
+- [x] (2026-02-17T17:29:00Z) P5 [M2] Create `tests/tool-result-handler.test.ts` covering scanning, redaction, audit logging, allowlist, and edge cases
+- [x] (2026-02-17T17:29:00Z) P6 [M2] Register `tool_result_persist` hook in `src/index.ts`
+- [x] (2026-02-17T17:29:00Z) P7 [M2] All tool-result-handler tests pass — 21 tests passed
+- [x] (2026-02-17T17:30:00Z) P8 [M3] Extend `tests/plugin-smoke.test.ts` with `tool_result_persist` hook registration and transformation tests
+- [x] (2026-02-17T17:30:00Z) P9 [M3] Full test suite passes — 149 tests, 8 files, 0 failures
+- [x] (2026-02-17T17:30:00Z) P10 [M3] Commit all changes — 3b7564f
 
 ## Surprises & Discoveries
 
-No surprises yet.
+- Observation: The Scanner class's `regexEngine` field is private, so we instantiated a fresh `RegexEngine` directly in `register()` rather than exposing the Scanner's internal instance.
+  Evidence: `const toolResultRegex = new RegexEngine();` in src/index.ts. RegexEngine is stateless (only uses pattern matching), so a separate instance is functionally identical.
+
+- Observation: The null byte separator approach for multi-block content works cleanly — regex PII patterns never match across `\0` boundaries.
+  Evidence: 27 extract tests pass including multi-block scenarios with mixed text/image blocks.
 
 ## Decision Log
 
@@ -53,7 +57,7 @@ No surprises yet.
 
 ## Outcomes & Retrospective
 
-Not yet started.
+All three milestones completed. FogClaw now scans tool results for PII via `tool_result_persist` hook using the regex engine synchronously. 149 tests pass across 8 test files with zero regressions. New modules: `src/extract.ts` (text extraction/replacement), `src/tool-result-handler.ts` (synchronous handler factory). The implementation adds 52 new tests (27 extract + 21 handler + 4 smoke).
 
 ## Context and Orientation
 
@@ -193,7 +197,21 @@ Running `pnpm test` at any point is safe and idempotent.
 
 ## Artifacts and Notes
 
-No artifacts yet. Evidence will be added as milestones are completed.
+Full test suite output:
+
+    ✓ tests/extract.test.ts (27 tests) 4ms
+    ✓ tests/config.test.ts (6 tests) 4ms
+    ✓ tests/redactor.test.ts (21 tests) 6ms
+    ✓ tests/regex.test.ts (39 tests) 11ms
+    ✓ tests/tool-result-handler.test.ts (21 tests) 10ms
+    ✓ tests/gliner.test.ts (12 tests) 10ms
+    ✓ tests/plugin-smoke.test.ts (8 tests) 9ms
+    ✓ tests/scanner.test.ts (15 tests) 13ms
+
+    Test Files  8 passed (8)
+         Tests  149 passed (149)
+
+Type check: `npx tsc --noEmit` — clean, no errors.
 
 ## Interfaces and Dependencies
 
@@ -272,3 +290,4 @@ Populated by `he-verify-release`.
 ## Revision Notes
 
 - 2026-02-17T00:00:00Z: Initialized plan from template. Reason: establish PLANS-compliant execution baseline for tool result PII scanning.
+- 2026-02-17T17:30:00Z: All milestones completed. Updated Progress, Surprises & Discoveries, Outcomes & Retrospective, and Artifacts sections with implementation evidence.
