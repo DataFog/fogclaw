@@ -1,7 +1,7 @@
 ---
 slug: 2026-02-17-feat-pii-access-request-backlog
 status: active
-phase: implement-complete
+phase: verify-release-go
 plan_mode: execution
 detail_level: more
 priority: high
@@ -342,18 +342,22 @@ Review date: 2026-02-17. Five parallel reviewers: correctness, architecture, sec
 
 ## Verify/Release Decision
 
-Populated by `he-verify-release`.
-
-- decision:
-- date:
-- open findings by priority (if any):
+- decision: **GO**
+- date: 2026-02-17
+- open findings by priority (if any): 0 critical, 0 high (S-17 resolved), 4 medium + 10 low routed to tech-debt tracker
 - evidence:
-- rollback:
-- post-release checks:
-- owner:
+  - TypeScript type check: `npx tsc --noEmit` — 0 errors
+  - Full test suite: `npx vitest run` — 215/215 tests pass, 11 test files, 0 failures
+  - Targeted backlog tests: 50 tests pass (27 backlog + 23 backlog-tools)
+  - Architecture invariants verified: no PII in audit logs, session-scoped only, original text revealed only on approve, RedactionMapStore has FIFO eviction (maxMappings=10000), all 3 hooks wire mappings correctly
+  - Review gate: CLEAR — security review performed (3 findings), data review performed (3 findings), 1 HIGH resolved
+- rollback: Purely additive change. Revert by removing `src/backlog.ts`, `src/backlog-tools.ts`, `tests/backlog.test.ts`, `tests/backlog-tools.test.ts`, and reverting additions in `src/index.ts`, `src/types.ts`, `src/config.ts`, `openclaw.plugin.json`, `fogclaw.config.example.json`. No database, no migrations, no persistent state. Process restart clears all in-memory backlog state.
+- post-release checks: Verify `npm test` passes in CI. Confirm 6 tools registered in plugin smoke test. Confirm audit events emit correctly with `auditEnabled: true` (no raw PII in logs). Confirm `maxPendingRequests` enforcement (request #51 returns error with default config).
+- owner: sidmohan
 
 ## Revision Notes
 
 - 2026-02-17T00:00:00Z: Initialized plan from spec `2026-02-17-feat-pii-access-request-backlog`. Three milestones: backlog store + request tool, review/resolve tools, polish. Detail level: MORE. Reason: establish PLANS-compliant execution baseline.
 - 2026-02-17T18:38:00Z: All milestones completed. Implementation was purely additive (1245 lines added, 4 changed). maxPendingRequests pulled from M3 to M1 for type-safety. All 213 tests pass. Plan updated with evidence and outcomes.
 - 2026-02-17T18:56:00Z: he-review completed. 5 parallel reviewers (correctness, architecture, security, data, simplicity). 1 HIGH finding (S-17: unbounded RedactionMapStore) fixed with FIFO eviction + maxMappings=10000 default. 4 MEDIUM + 10 LOW routed to tech-debt tracker. 215/215 tests pass post-fix. Priority gate CLEAR.
+- 2026-02-17T19:00:00Z: he-verify-release completed. 5 gates verified in parallel (tests, architecture invariants, review gate, rollback, monitoring). All gates PASS. Decision: GO. 215/215 tests, 0 type errors, rollback documented, audit events documented.
