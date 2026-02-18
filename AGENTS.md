@@ -20,6 +20,7 @@ The system of record is `docs/`. Keep durable knowledge (specs, plans, logs, dec
 - Runbooks (process checklists): `docs/runbooks/`
 - Generated context (scratchpad/reference): `docs/generated/`
 - Architecture (if present): `ARCHITECTURE.md`
+- Domain docs (policy): `docs/DOMAIN_DOCS.md` for registry; `docs/SECURITY.md`, `docs/OBSERVABILITY.md` for depth
 
 ## Workflow (Phases)
 

@@ -45,6 +45,7 @@ At minimum, callers should classify whether their usage has regulated data and e
 - Never store scan results in global caches.
 - Preserve plugin fallback behavior: if GLiNER initialization fails, continue in regex-only mode and do not fail the entire request path.
 - Enforce the plugin-level switch (`enabled`) to allow safe disablement without process restart if needed.
+- Any in-memory store holding PII or sensitive data must have a configurable size cap with eviction. Unbounded accumulation is a security defect. See `RedactionMapStore` (maxMappings=10000, FIFO eviction) as the reference pattern.
 
 ## OpenClaw-Specific Security Notes
 

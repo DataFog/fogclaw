@@ -1,7 +1,7 @@
 ---
 slug: 2026-02-17-feat-pii-access-request-backlog
 status: active
-phase: verify-release-go
+phase: complete
 plan_mode: execution
 detail_level: more
 priority: high
@@ -81,6 +81,14 @@ All three milestones completed in a single implementation pass:
 - **M3**: Audit logging, `maxPendingRequests` config, batch resolve, manifest/config/doc updates all complete. 213 total tests, 0 failures, 0 type errors.
 
 The implementation was purely additive — no existing behavior changed. The only modification to existing test assertions was updating the smoke test tool count from 3 to 6.
+
+**Key learnings:**
+
+- Unbounded in-memory stores holding PII are a security defect. The `RedactionMapStore` lacked a size cap and was caught as HIGH during review. Promoted to `docs/SECURITY.md` controls as a durable rule.
+- Config fields used as constructor parameters must be planned in the same milestone as the consumer. `maxPendingRequests` was pulled from M3 to M1.
+- The tool handler factory pattern (`createXHandler(deps) → handler`) is highly replicable — 3 new tools were built with consistent structure in a single pass.
+
+**Remaining gaps:** 4 MEDIUM + 10 LOW findings routed to `docs/plans/tech-debt-tracker.md` (TD-2026-02-17-03 through TD-2026-02-17-10).
 
 ## Context and Orientation
 
@@ -359,3 +367,5 @@ Review date: 2026-02-17. Five parallel reviewers: correctness, architecture, sec
 - 2026-02-17T18:38:00Z: All milestones completed. Implementation was purely additive (1245 lines added, 4 changed). maxPendingRequests pulled from M3 to M1 for type-safety. All 213 tests pass. Plan updated with evidence and outcomes.
 - 2026-02-17T18:56:00Z: he-review completed. 5 parallel reviewers (correctness, architecture, security, data, simplicity). 1 HIGH finding (S-17: unbounded RedactionMapStore) fixed with FIFO eviction + maxMappings=10000 default. 4 MEDIUM + 10 LOW routed to tech-debt tracker. 215/215 tests pass post-fix. Priority gate CLEAR.
 - 2026-02-17T19:00:00Z: he-verify-release completed. 5 gates verified in parallel (tests, architecture invariants, review gate, rollback, monitoring). All gates PASS. Decision: GO. 215/215 tests, 0 type errors, rollback documented, audit events documented.
+- 2026-02-17T19:10:00Z: he-github completed. PR #2 created, CI fixed (OBSERVABILITY.md headings + outbound spec headings), squash-merged to main as c65bac9.
+- 2026-02-17T19:15:00Z: he-learn completed. Learnings promoted: unbounded PII store rule added to SECURITY.md controls, ARCHITECTURE.md created, Outcomes & Retrospective finalized with key learnings and remaining gaps. Plan archived to docs/plans/completed/.
