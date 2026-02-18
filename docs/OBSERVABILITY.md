@@ -19,7 +19,18 @@ When `auditEnabled: true`, FogClaw emits structured JSON audit entries on each s
 
     [FOGCLAW AUDIT] guardrail_scan {"totalEntities":2,"blocked":1,"warned":0,"redacted":1,"blockedLabels":["SSN"],"warnedLabels":[],"redactedLabels":["EMAIL"],"source":"prompt"}
 
-The `source` field distinguishes scan surfaces: `"prompt"` for `before_agent_start`, `"tool_result"` for `tool_result_persist`.
+The `source` field distinguishes scan surfaces: `"prompt"` for `before_agent_start`, `"tool_result"` for `tool_result_persist`, `"outbound"` for `message_sending`.
+
+### Access Request Audit Events
+
+When the PII access request backlog is used and `auditEnabled: true`, FogClaw emits additional audit events for the request lifecycle:
+
+    [FOGCLAW AUDIT] access_request_created {"request_id":"REQ-1","entity_type":"EMAIL","source":"backlog"}
+    [FOGCLAW AUDIT] access_request_resolved {"request_id":"REQ-1","action":"approve","entity_type":"EMAIL","source":"backlog"}
+    [FOGCLAW AUDIT] access_request_resolved {"request_id":"REQ-2","action":"deny","entity_type":"SSN","source":"backlog"}
+    [FOGCLAW AUDIT] access_request_resolved {"request_id":"REQ-3","action":"follow_up","entity_type":"PERSON","source":"backlog"}
+
+These events include the request ID, entity type, and action taken, but never the original PII text. The `source` field is always `"backlog"` to distinguish from scan events.
 
 ## Health Signals
 
