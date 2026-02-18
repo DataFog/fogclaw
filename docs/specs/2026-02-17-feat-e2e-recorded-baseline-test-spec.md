@@ -80,8 +80,8 @@ Ship as a new test target (`npm run test:e2e`) alongside existing tests. Initial
 
 ## Open Questions
 
-- **[spike]** **[Affects R1, R7, R8]** How does OpenClaw's local development setup work? What commands start the Dashboard UI? What port? What authentication? Does `openclaw dashboard` exist? This must be validated before planning.
-- **[spike]** **[Affects R7]** Can `agent-browser` drive the OpenClaw Dashboard reliably? What selectors are available? Is there a data-testid convention?
+- ~~**[spike]** **[Affects R1, R7, R8]** How does OpenClaw's local development setup work?~~ **RESOLVED**: Gateway runs as LaunchAgent on `ws://127.0.0.1:18789`, Dashboard at `http://127.0.0.1:18789/`, token auth via `openclaw dashboard --no-open`. CLI agent: `openclaw agent --session-id <id> --message <text> --json`. See spike findings.
+- ~~**[spike]** **[Affects R7]** Can `agent-browser` drive the OpenClaw Dashboard reliably?~~ **RESOLVED**: Yes. No data-testid selectors, but text/role selectors are stable and descriptive (e.g., button "Send", link "Config", link "Chat"). Playwright automation confirmed working.
 - **[planning]** **[Affects R6]** What video format and resolution? Playwright supports `.webm` natively. Should we transcode to `.mp4` for broader compatibility?
 - **[decision]** **[Affects R9]** Should the "before/after" comparison be two separate test runs, or a single run that enables FogClaw mid-test?
 
@@ -121,8 +121,9 @@ Ship as a new test target (`npm run test:e2e`) alongside existing tests. Initial
 
 ## Handoff
 
-Spike recommended before planning. The OpenClaw Dashboard UI structure, selector availability, and local setup process are unknown and must be validated. After the spike, proceed to he-plan with concrete knowledge of what's automatable.
+Spike complete. All `[spike]` questions resolved — Dashboard automation is feasible, CLI agent automation works, plugin update is a single command. Proceed to `he-plan` with concrete knowledge from `docs/spikes/2026-02-17-feat-e2e-recorded-baseline-test-spike.md`.
 
 ## Revision Notes
 
 - 2026-02-17T19:30:00Z: Initialized spec. E2E recorded baseline test for FogClaw against real OpenClaw instance. Spike recommended to validate Dashboard automation feasibility. Video recording chosen over screenshots for richer evidence with human review loop.
+- 2026-02-17T20:00:00Z: Updated from spike findings. Closed `[spike]` open questions (R1/R7/R8). Dashboard uses text/role selectors (no data-testid). CLI agent returns structured JSON. Plugin update is `openclaw plugins update fogclaw`. Handoff updated to proceed to planning.
