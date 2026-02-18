@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- **PII access request backlog** — agents can request access to redacted data via `fogclaw_request_access`, users review via `fogclaw_requests`, and resolve (approve/deny/follow-up) via `fogclaw_resolve`. Full async workflow with batch resolve support.
+- **RedactionMapStore** — captures placeholder-to-original text mappings from all three scanning hooks, enabling backlog approvals to reveal original data.
+- **Configurable `maxPendingRequests`** — caps the number of pending access requests per session (default: 50). Configurable in `fogclaw.config.json` and `openclaw.plugin.json`.
+- **FIFO eviction for redaction mappings** — `RedactionMapStore` caps at 10,000 entries by default with oldest-first eviction to prevent unbounded PII accumulation in memory.
+- **Access request audit events** — `access_request_created` and `access_request_resolved` structured audit log entries when `auditEnabled: true`. Never includes raw PII.
+- **ARCHITECTURE.md** — top-level architecture document covering components, scanning layers, tools, data flow, and key invariants.
+
 ## 0.2.0
 
 ### Added
