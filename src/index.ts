@@ -4,6 +4,12 @@ import { loadConfig } from "./config.js";
 import { RegexEngine } from "./engines/regex.js";
 import { createToolResultHandler } from "./tool-result-handler.js";
 import { createMessageSendingHandler } from "./message-sending-handler.js";
+import { RedactionMapStore, BacklogStore } from "./backlog.js";
+import {
+  createRequestAccessHandler,
+  createRequestsListHandler,
+  createResolveHandler,
+} from "./backlog-tools.js";
 import { resolveAction } from "./types.js";
 import type {
   Entity,
@@ -12,11 +18,14 @@ import type {
   RedactResult,
   RedactStrategy,
   ScanResult,
+  AccessRequest,
+  RequestStatus,
 } from "./types.js";
 
 export { Scanner } from "./scanner.js";
 export { redact } from "./redactor.js";
 export { loadConfig, DEFAULT_CONFIG } from "./config.js";
+export { RedactionMapStore, BacklogStore } from "./backlog.js";
 export type {
   Entity,
   FogClawConfig,
@@ -24,6 +33,8 @@ export type {
   RedactResult,
   RedactStrategy,
   GuardrailAction,
+  AccessRequest,
+  RequestStatus,
 } from "./types.js";
 
 function buildGuardrailPlan(entities: Entity[], config: FogClawConfig) {
@@ -122,6 +133,10 @@ const fogclaw = {
       api.logger?.warn(`[fogclaw] GLiNER background init failed: ${String(err)}`);
     });
 
+    // --- Access Request Backlog ---
+    const redactionMapStore = new RedactionMapStore();
+    const backlogStore = new BacklogStore(redactionMapStore, config.maxPendingRequests);
+
     // --- HOOK: Guardrail on incoming messages ---
     api.on("before_agent_start", async (event: any) => {
       const message = event.prompt ?? "";
@@ -154,6 +169,7 @@ const fogclaw = {
           plan.redacted,
           config.redactStrategy,
         );
+        redactionMapStore.addMapping(redactedResult.mapping);
         contextParts.push(
           `[FOGCLAW REDACTED] The following is the user's message with PII redacted:\n${redactedResult.redacted_text}`,
         );
@@ -166,11 +182,11 @@ const fogclaw = {
 
     // --- HOOK: Scan tool results for PII before persistence ---
     const toolResultRegex = new RegexEngine();
-    const toolResultHandler = createToolResultHandler(config, toolResultRegex, api.logger);
+    const toolResultHandler = createToolResultHandler(config, toolResultRegex, api.logger, redactionMapStore);
     api.on("tool_result_persist", toolResultHandler);
 
     // --- HOOK: Scan outbound messages for PII before delivery ---
-    const messageSendingHandler = createMessageSendingHandler(config, scanner, api.logger);
+    const messageSendingHandler = createMessageSendingHandler(config, scanner, api.logger, redactionMapStore);
     api.on("message_sending", messageSendingHandler);
 
     // --- TOOL: On-demand scan ---
@@ -371,6 +387,97 @@ const fogclaw = {
         },
       }
     );
+
+    // --- TOOL: Request access to redacted data ---
+    api.registerTool({
+      name: "fogclaw_request_access",
+      id: "fogclaw_request_access",
+      description:
+        "Request access to redacted PII data. Use when you encounter a redacted placeholder (like [EMAIL_1]) and need the original text to complete a task. A user must review and approve the request.",
+      schema: {
+        type: "object",
+        properties: {
+          placeholder: {
+            type: "string",
+            description:
+              'The redacted placeholder token (e.g., "[EMAIL_1]", "[SSN_1]")',
+          },
+          entity_type: {
+            type: "string",
+            description:
+              'The type of entity (e.g., "EMAIL", "SSN", "PERSON")',
+          },
+          reason: {
+            type: "string",
+            description: "Why you need access to this data",
+          },
+          context: {
+            type: "string",
+            description:
+              "Surrounding text or context where the placeholder appears (optional)",
+          },
+        },
+        required: ["placeholder", "entity_type", "reason"],
+      },
+      handler: createRequestAccessHandler(backlogStore, config, api.logger),
+    });
+
+    // --- TOOL: List access requests ---
+    api.registerTool({
+      name: "fogclaw_requests",
+      id: "fogclaw_requests",
+      description:
+        "List PII access requests. Use to review pending requests or check for approved/denied responses. Filter by status: pending, approved, denied, follow_up.",
+      schema: {
+        type: "object",
+        properties: {
+          status: {
+            type: "string",
+            description:
+              'Filter by request status. One of: "pending", "approved", "denied", "follow_up". Omit to list all.',
+            enum: ["pending", "approved", "denied", "follow_up"],
+          },
+        },
+        required: [],
+      },
+      handler: createRequestsListHandler(backlogStore, config, api.logger),
+    });
+
+    // --- TOOL: Resolve access request ---
+    api.registerTool({
+      name: "fogclaw_resolve",
+      id: "fogclaw_resolve",
+      description:
+        'Resolve a PII access request. Approve to reveal the original text, deny to reject, or follow_up to ask the agent for more context. Use request_id for single or request_ids for batch.',
+      schema: {
+        type: "object",
+        properties: {
+          request_id: {
+            type: "string",
+            description: 'The ID of the request to resolve (e.g., "REQ-1")',
+          },
+          request_ids: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Multiple request IDs to resolve with the same action (batch mode)",
+          },
+          action: {
+            type: "string",
+            description:
+              'Action to take: "approve" (reveal original text), "deny" (reject), or "follow_up" (ask agent for more context)',
+            enum: ["approve", "deny", "follow_up"],
+          },
+          message: {
+            type: "string",
+            description:
+              "Optional message: reason for denial, or follow-up question for the agent",
+          },
+        },
+        required: ["action"],
+      },
+      handler: createResolveHandler(backlogStore, config, api.logger),
+    });
 
     api.logger?.info(
       `[fogclaw] Plugin registered — guardrail: ${config.guardrail_mode}, model: ${config.model}, custom entities: ${config.custom_entities.length}, audit: ${config.auditEnabled}`,

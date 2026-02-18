@@ -84,6 +84,17 @@ Note: `message_sending` is defined in OpenClaw's type system but not yet invoked
 - M1: Create `src/message-sending-handler.ts` with async handler factory, plus unit tests
 - M2: Register hook in `src/index.ts`, extend plugin smoke test, full suite validation
 
+## Rollout
+
+Ship with the next FogClaw release. The handler registers automatically during plugin startup. No feature flag needed — the hook only fires when OpenClaw wires `message_sending` into its outbound message flow.
+
+## Validation and Acceptance Signals
+
+- All unit tests pass for `src/message-sending-handler.ts` (PII detection, redaction, allowlist, audit, no-op)
+- Plugin smoke test confirms `message_sending` hook registration and PII redaction in outbound content
+- Full test suite passes with no regressions
+- No new dependencies introduced
+
 ## Handoff
 
 After spec approval, proceed directly to implementation (lightweight plan mode — code mirrors the established `tool-result-handler.ts` pattern).

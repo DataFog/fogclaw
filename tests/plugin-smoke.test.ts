@@ -50,19 +50,28 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(api.on).toHaveBeenCalledWith("before_agent_start", expect.any(Function));
     expect(api.on).toHaveBeenCalledWith("tool_result_persist", expect.any(Function));
     expect(api.on).toHaveBeenCalledWith("message_sending", expect.any(Function));
-    expect(api.registerTool).toHaveBeenCalledTimes(3);
+    expect(api.registerTool).toHaveBeenCalledTimes(6);
 
     const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
     const previewTool = api.tools.find((tool: any) => tool.id === "fogclaw_preview");
     const redactTool = api.tools.find((tool: any) => tool.id === "fogclaw_redact");
+    const requestAccessTool = api.tools.find((tool: any) => tool.id === "fogclaw_request_access");
+    const requestsTool = api.tools.find((tool: any) => tool.id === "fogclaw_requests");
+    const resolveTool = api.tools.find((tool: any) => tool.id === "fogclaw_resolve");
 
     expect(scanTool).toBeDefined();
     expect(previewTool).toBeDefined();
     expect(redactTool).toBeDefined();
+    expect(requestAccessTool).toBeDefined();
+    expect(requestsTool).toBeDefined();
+    expect(resolveTool).toBeDefined();
 
     expect(scanTool.schema.required).toContain("text");
     expect(previewTool.schema.required).toContain("text");
     expect(redactTool.schema.required).toContain("text");
+    expect(requestAccessTool.schema.required).toContain("placeholder");
+    expect(requestsTool.schema.required).toEqual([]);
+    expect(resolveTool.schema.required).toContain("action");
   });
 
   it("validates hook and tool behavior against real Scanner execution path", async () => {

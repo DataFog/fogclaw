@@ -13,6 +13,7 @@ import type { Scanner } from "./scanner.js";
 import { redact } from "./redactor.js";
 import { resolveAction } from "./types.js";
 import type { Entity, FogClawConfig } from "./types.js";
+import type { RedactionMapStore } from "./backlog.js";
 
 interface Logger {
   info(msg: string): void;
@@ -47,6 +48,7 @@ export function createMessageSendingHandler(
   config: FogClawConfig,
   scanner: Scanner,
   logger?: Logger,
+  redactionMapStore?: RedactionMapStore,
 ): (event: MessageSendingEvent, ctx: MessageSendingContext) => Promise<MessageSendingResult | void> {
   return async (
     event: MessageSendingEvent,
@@ -67,6 +69,11 @@ export function createMessageSendingHandler(
     if (actionableEntities.length === 0) return;
 
     const redacted = redact(text, actionableEntities, config.redactStrategy);
+
+    // Capture mapping for backlog access requests
+    if (redactionMapStore) {
+      redactionMapStore.addMapping(redacted.mapping);
+    }
 
     // Audit logging
     if (config.auditEnabled && logger) {

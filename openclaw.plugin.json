@@ -90,6 +90,11 @@
       "auditEnabled": {
         "type": "boolean",
         "default": true
+      },
+      "maxPendingRequests": {
+        "type": "integer",
+        "default": 50,
+        "minimum": 1
       }
     }
   },
@@ -138,6 +143,11 @@
     "auditEnabled": {
       "label": "Audit Logging",
       "help": "Emit structured audit summaries for guardrail decisions.",
+      "advanced": true
+    },
+    "maxPendingRequests": {
+      "label": "Max Pending Access Requests",
+      "help": "Maximum number of pending PII access requests per session (default: 50).",
       "advanced": true
     }
   }

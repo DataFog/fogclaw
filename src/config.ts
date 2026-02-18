@@ -119,6 +119,7 @@ export const DEFAULT_CONFIG: FogClawConfig = {
     entities: {},
   },
   auditEnabled: true,
+  maxPendingRequests: 50,
 };
 
 export function loadConfig(overrides: Partial<FogClawConfig>): FogClawConfig {
@@ -164,6 +165,16 @@ export function loadConfig(overrides: Partial<FogClawConfig>): FogClawConfig {
 
   if (typeof config.auditEnabled !== "boolean") {
     throw new Error(`auditEnabled must be true or false`);
+  }
+
+  if (
+    typeof config.maxPendingRequests !== "number" ||
+    !Number.isInteger(config.maxPendingRequests) ||
+    config.maxPendingRequests < 1
+  ) {
+    throw new Error(
+      `maxPendingRequests must be a positive integer, got ${String(config.maxPendingRequests)}`,
+    );
   }
 
   const normalizedActions: Record<string, GuardrailAction> = {};

@@ -5,13 +5,14 @@ use_when: "Capturing security expectations for this repo: threat model, auth/aut
 
 ## Threat Model
 
-FogClaw processes text from two surfaces: user prompts (`before_agent_start`) and tool results (`tool_result_persist`). Both may contain PII. The main risks are:
+FogClaw processes text from three surfaces: user prompts (`before_agent_start`), tool results (`tool_result_persist`), and outbound messages (`message_sending`). All may contain PII. The main risks are:
 
-1. **PII leaking through unscanned paths.** Any text surface that FogClaw does not hook into is a gap. Currently covered: user prompts and tool results. Not yet covered: outbound messages (`message_sending`), historical messages, compacted summaries.
+1. **PII leaking through unscanned paths.** Any text surface that FogClaw does not hook into is a gap. Currently covered: user prompts, tool results, and outbound messages. Not yet covered: historical messages, compacted summaries.
 2. **Redaction logic errors.** If redaction produces malformed output (e.g., offset miscalculation), original PII spans could leak through or be partially visible.
 3. **Accidental PII in logs/errors.** Audit entries, error messages, and crash output must never contain raw PII values.
 4. **Regex false negatives.** The synchronous tool result path uses regex-only detection. Edge-case PII formats (international phone numbers, non-standard SSN formatting) may not match.
 5. **GLiNER unavailability.** If the ONNX model fails to load, the prompt-level scanner degrades to regex-only mode silently. Users may not realize unstructured entities (names, organizations) are not being detected.
+6. **PII held in backlog memory.** The PII access request backlog stores original (pre-redaction) text in runtime memory so approved requests can reveal the data. This memory is session-scoped and never written to disk. Mitigations: configurable `maxPendingRequests` cap (default 50), memory is released when the process exits, audit logging tracks all access request events without including raw PII.
 
 ## Auth Model
 
@@ -28,8 +29,8 @@ Within this repo, this means:
 Treat plugin input as sensitive by default.
 
 - PII and custom entities are parsed from incoming messages.
-- Entity text is held in memory during scan and redaction only.
-- Do not write raw messages, detected entity values, or redaction mappings to disk.
+- Entity text is held in memory during scan and redaction, and in the access request backlog when agents request access to redacted data.
+- Do not write raw messages, detected entity values, or redaction mappings to disk. The backlog is in-memory only and session-scoped.
 - Prefer hash or token strategies when persistence is required by caller policy.
 
 ## Compliance
