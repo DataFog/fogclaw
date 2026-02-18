@@ -11,6 +11,7 @@ import { redact } from "./redactor.js";
 import { extractText, replaceText } from "./extract.js";
 import { canonicalType, resolveAction } from "./types.js";
 import type { Entity, FogClawConfig } from "./types.js";
+import type { RedactionMapStore } from "./backlog.js";
 
 interface Logger {
   info(msg: string): void;
@@ -84,6 +85,7 @@ export function createToolResultHandler(
   config: FogClawConfig,
   regexEngine: RegexEngine,
   logger?: Logger,
+  redactionMapStore?: RedactionMapStore,
 ): (event: ToolResultPersistEvent, ctx: ToolResultPersistContext) => { message: unknown } | void {
   const shouldKeep = buildAllowlistFilter(config);
 
@@ -111,6 +113,11 @@ export function createToolResultHandler(
 
     // Redact
     const result = redact(text, actionableEntities, config.redactStrategy);
+
+    // Capture mapping for backlog access requests
+    if (redactionMapStore) {
+      redactionMapStore.addMapping(result.mapping);
+    }
 
     // Replace text in the message
     const modifiedMessage = replaceText(event.message, result.redacted_text);

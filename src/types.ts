@@ -32,6 +32,7 @@ export interface FogClawConfig {
   entityConfidenceThresholds: EntityConfidenceThresholds;
   allowlist: EntityAllowlist;
   auditEnabled: boolean;
+  maxPendingRequests: number;
 }
 
 export interface ScanResult {
@@ -72,4 +73,22 @@ export function canonicalType(entityType: string): string {
 
 export function resolveAction(entity: Entity, config: FogClawConfig): GuardrailAction {
   return config.entityActions[entity.label] ?? config.guardrail_mode;
+}
+
+// --- Access Request Backlog types ---
+
+export type RequestStatus = "pending" | "approved" | "denied" | "follow_up";
+
+export interface AccessRequest {
+  id: string;
+  placeholder: string;
+  entityType: string;
+  originalText: string | null;
+  reason: string;
+  context: string | null;
+  status: RequestStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+  followUpMessage: string | null;
+  responseMessage: string | null;
 }

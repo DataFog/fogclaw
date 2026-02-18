@@ -29,5 +29,6 @@
       ]
     }
   },
-  "auditEnabled": true
+  "auditEnabled": true,
+  "maxPendingRequests": 50
 }
