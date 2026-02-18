@@ -4,22 +4,29 @@ use_when: "Documenting logging, metrics, tracing, and health check conventions f
 ---
 
 ## Logging Strategy
-- Prefer structured logs with consistent fields (service, env, request_id/trace_id, user_id when safe).
-- Never log secrets; be deliberate about PII.
-- Log at boundaries and on errors; avoid noisy per-loop logging in hot paths.
 
-## Metrics
-- Track the golden signals: latency, traffic, errors, saturation.
-- Prefer histograms for latency; keep label cardinality low.
+FogClaw uses `api.logger` provided by OpenClaw during plugin registration. Three log levels are used:
 
-## Traces
-- Propagate trace context across service boundaries.
-- Trace the critical paths (requests, background jobs) with stable span names.
+- `info` — Audit log entries for PII detections, plugin lifecycle events (registration, config load).
+- `warn` — GLiNER model initialization failures, degraded mode notifications, scan errors that fall back gracefully.
+- `error` — Configuration validation failures, unrecoverable errors.
 
-## Health Checks
-- Health checks are fast and deterministic; readiness reflects dependency availability when needed.
-- Document expected status codes and what "unhealthy" means operationally.
+Never log raw PII values. Audit entries include entity counts and type labels only.
 
-## Agent Access
-- Provide at least one concrete way to query each signal (logs, metrics, traces) without tribal knowledge.
-- Include 1-2 copy-pastable examples per signal once the stack is known (commands, URLs, or queries).
+## Audit Log Format
+
+When `auditEnabled: true`, FogClaw emits structured JSON audit entries on each scan that detects entities:
+
+    [FOGCLAW AUDIT] guardrail_scan {"totalEntities":2,"blocked":1,"warned":0,"redacted":1,"blockedLabels":["SSN"],"warnedLabels":[],"redactedLabels":["EMAIL"],"source":"prompt"}
+
+The `source` field distinguishes scan surfaces: `"prompt"` for `before_agent_start`, `"tool_result"` for `tool_result_persist`.
+
+## Health Signals
+
+- **Plugin registration:** `[fogclaw] Plugin registered` log line at startup confirms the plugin loaded and configured successfully.
+- **GLiNER availability:** Logged at startup. If the ONNX model fails to download or load, FogClaw logs a warning and operates in regex-only mode.
+- **Scan activity:** Audit entries indicate active scanning. Absence of audit entries when PII is known to be present may indicate misconfiguration, a disabled plugin, or a gap in hook coverage.
+
+## Metrics and Traces
+
+FogClaw does not emit standalone metrics or traces. It operates within OpenClaw's process and relies on the host's observability infrastructure. Audit log entries serve as the primary observability signal.

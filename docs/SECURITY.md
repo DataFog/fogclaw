@@ -5,11 +5,13 @@ use_when: "Capturing security expectations for this repo: threat model, auth/aut
 
 ## Threat Model
 
-FogClaw processes user-provided prompt text and returns extracted entities with character offsets. The main risk is accidental exposure of sensitive information in logs, crash output, or plugin responses.
+FogClaw processes text from two surfaces: user prompts (`before_agent_start`) and tool results (`tool_result_persist`). Both may contain PII. The main risks are:
 
-Assume untrusted text arrives from user messages.
-
-For this repo, a concrete threat is that PII can appear in plain text and be reflected back in a wrong form (for example, redacted text leaking original spans) if redaction logic or logging is incorrect.
+1. **PII leaking through unscanned paths.** Any text surface that FogClaw does not hook into is a gap. Currently covered: user prompts and tool results. Not yet covered: outbound messages (`message_sending`), historical messages, compacted summaries.
+2. **Redaction logic errors.** If redaction produces malformed output (e.g., offset miscalculation), original PII spans could leak through or be partially visible.
+3. **Accidental PII in logs/errors.** Audit entries, error messages, and crash output must never contain raw PII values.
+4. **Regex false negatives.** The synchronous tool result path uses regex-only detection. Edge-case PII formats (international phone numbers, non-standard SSN formatting) may not match.
+5. **GLiNER unavailability.** If the ONNX model fails to load, the prompt-level scanner degrades to regex-only mode silently. Users may not realize unstructured entities (names, organizations) are not being detected.
 
 ## Auth Model
 
