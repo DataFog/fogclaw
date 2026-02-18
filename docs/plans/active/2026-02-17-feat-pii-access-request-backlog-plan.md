@@ -292,12 +292,10 @@ New test breakdown:
 
 ## Pull Request
 
-Populated by `he-github`.
-
-- pr:
-- branch:
-- commit:
-- ci:
+- pr: https://github.com/DataFog/fogclaw/pull/2
+- branch: `feat/pii-access-request-backlog`
+- commit: `046a8bc`
+- ci: pending (no CI configured for this repo)
 
 ## Review Findings
 
