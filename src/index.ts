@@ -3,6 +3,7 @@ import { redact } from "./redactor.js";
 import { loadConfig } from "./config.js";
 import { RegexEngine } from "./engines/regex.js";
 import { createToolResultHandler } from "./tool-result-handler.js";
+import { createMessageSendingHandler } from "./message-sending-handler.js";
 import { resolveAction } from "./types.js";
 import type {
   Entity,
@@ -167,6 +168,10 @@ const fogclaw = {
     const toolResultRegex = new RegexEngine();
     const toolResultHandler = createToolResultHandler(config, toolResultRegex, api.logger);
     api.on("tool_result_persist", toolResultHandler);
+
+    // --- HOOK: Scan outbound messages for PII before delivery ---
+    const messageSendingHandler = createMessageSendingHandler(config, scanner, api.logger);
+    api.on("message_sending", messageSendingHandler);
 
     // --- TOOL: On-demand scan ---
     api.registerTool(

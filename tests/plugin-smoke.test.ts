@@ -49,6 +49,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(typeof plugin.register).toBe("function");
     expect(api.on).toHaveBeenCalledWith("before_agent_start", expect.any(Function));
     expect(api.on).toHaveBeenCalledWith("tool_result_persist", expect.any(Function));
+    expect(api.on).toHaveBeenCalledWith("message_sending", expect.any(Function));
     expect(api.registerTool).toHaveBeenCalledTimes(3);
 
     const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
@@ -204,5 +205,46 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(auditCalls[0][0]).toContain('"source":"tool_result"');
     expect(auditCalls[0][0]).toContain('"toolName":"web_fetch"');
     expect(auditCalls[0][0]).not.toContain("john@example.com");
+  });
+
+  it("registers message_sending hook", () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "message_sending");
+    expect(hook).toBeDefined();
+  });
+
+  it("message_sending hook redacts PII in outbound messages", async () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "message_sending");
+    expect(hook).toBeDefined();
+
+    const result = await hook!.handler({
+      to: "user123",
+      content: "Your SSN is 123-45-6789 and email is john@example.com.",
+    }, { channelId: "telegram" });
+
+    expect(result).toBeDefined();
+    expect(result.content).toContain("[SSN_1]");
+    expect(result.content).toContain("[EMAIL_1]");
+    expect(result.content).not.toContain("123-45-6789");
+    expect(result.content).not.toContain("john@example.com");
+    expect(result.cancel).toBeUndefined();
+  });
+
+  it("message_sending hook returns void for clean messages", async () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "message_sending");
+    const result = await hook!.handler({
+      to: "user123",
+      content: "Hello, how can I help?",
+    }, { channelId: "slack" });
+
+    expect(result).toBeUndefined();
   });
 });
