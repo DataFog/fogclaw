@@ -32,12 +32,23 @@ When the PII access request backlog is used and `auditEnabled: true`, FogClaw em
 
 These events include the request ID, entity type, and action taken, but never the original PII text. The `source` field is always `"backlog"` to distinguish from scan events.
 
-## Health Signals
+## Health Checks
 
 - **Plugin registration:** `[fogclaw] Plugin registered` log line at startup confirms the plugin loaded and configured successfully.
 - **GLiNER availability:** Logged at startup. If the ONNX model fails to download or load, FogClaw logs a warning and operates in regex-only mode.
 - **Scan activity:** Audit entries indicate active scanning. Absence of audit entries when PII is known to be present may indicate misconfiguration, a disabled plugin, or a gap in hook coverage.
 
-## Metrics and Traces
+## Metrics
 
-FogClaw does not emit standalone metrics or traces. It operates within OpenClaw's process and relies on the host's observability infrastructure. Audit log entries serve as the primary observability signal.
+FogClaw does not emit standalone metrics. It operates within OpenClaw's process and relies on the host's observability infrastructure. Audit log entries serve as the primary observability signal.
+
+## Traces
+
+FogClaw does not emit traces. Correlation between scan events can be inferred from audit log timestamps and the `source` field.
+
+## Agent Access
+
+Agents can observe FogClaw's behavior through:
+
+- **Audit log entries:** When `auditEnabled: true`, every scan and access request event is logged with structured JSON. Agents can parse these for entity counts, actions taken, and request lifecycle state.
+- **Tool responses:** The `fogclaw_scan`, `fogclaw_preview`, and `fogclaw_requests` tools return structured JSON that agents can use to verify scanning behavior and request status.
