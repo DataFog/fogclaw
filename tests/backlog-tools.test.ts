@@ -39,7 +39,7 @@ describe("fogclaw_request_access handler", () => {
 
   it("creates a request and returns confirmation", () => {
     const handler = createRequestAccessHandler(backlog, config, logger);
-    const response = handler({
+    const response = handler("test", {
       placeholder: "[EMAIL_1]",
       entity_type: "EMAIL",
       reason: "Need to send a follow-up email",
@@ -53,7 +53,7 @@ describe("fogclaw_request_access handler", () => {
 
   it("emits audit log when auditEnabled", () => {
     const handler = createRequestAccessHandler(backlog, config, logger);
-    handler({
+    handler("test", {
       placeholder: "[EMAIL_1]",
       entity_type: "EMAIL",
       reason: "reason",
@@ -71,7 +71,7 @@ describe("fogclaw_request_access handler", () => {
   it("does not emit audit log when auditEnabled is false", () => {
     const noAuditConfig = makeConfig({ auditEnabled: false });
     const handler = createRequestAccessHandler(backlog, noAuditConfig, logger);
-    handler({
+    handler("test", {
       placeholder: "[EMAIL_1]",
       entity_type: "EMAIL",
       reason: "reason",
@@ -85,8 +85,8 @@ describe("fogclaw_request_access handler", () => {
     const smallBacklog = new BacklogStore(mapStore, smallConfig.maxPendingRequests);
     const handler = createRequestAccessHandler(smallBacklog, smallConfig, logger);
 
-    handler({ placeholder: "[EMAIL_1]", entity_type: "EMAIL", reason: "r1" });
-    const response = handler({ placeholder: "[SSN_1]", entity_type: "SSN", reason: "r2" });
+    handler("test", { placeholder: "[EMAIL_1]", entity_type: "EMAIL", reason: "r1" });
+    const response = handler("test", { placeholder: "[SSN_1]", entity_type: "SSN", reason: "r2" });
 
     const parsed = parseToolResponse(response);
     expect(parsed.error).toContain("Maximum pending requests reached");
@@ -94,7 +94,7 @@ describe("fogclaw_request_access handler", () => {
 
   it("includes context when provided", () => {
     const handler = createRequestAccessHandler(backlog, config, logger);
-    handler({
+    handler("test", {
       placeholder: "[EMAIL_1]",
       entity_type: "EMAIL",
       reason: "reason",
@@ -125,7 +125,7 @@ describe("fogclaw_requests handler", () => {
 
   it("returns empty list when no requests", () => {
     const handler = createRequestsListHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({}));
+    const parsed = parseToolResponse(handler("test", {}));
     expect(parsed.requests).toEqual([]);
     expect(parsed.total).toBe(0);
   });
@@ -135,7 +135,7 @@ describe("fogclaw_requests handler", () => {
     backlog.createRequest("[SSN_1]", "SSN", "r2");
 
     const handler = createRequestsListHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({}));
+    const parsed = parseToolResponse(handler("test", {}));
     expect(parsed.requests).toHaveLength(2);
     expect(parsed.filter).toBe("all");
   });
@@ -147,11 +147,11 @@ describe("fogclaw_requests handler", () => {
 
     const handler = createRequestsListHandler(backlog, config, logger);
 
-    const pending = parseToolResponse(handler({ status: "pending" }));
+    const pending = parseToolResponse(handler("test", { status: "pending" }));
     expect(pending.requests).toHaveLength(1);
     expect(pending.requests[0].id).toBe("REQ-2");
 
-    const approved = parseToolResponse(handler({ status: "approved" }));
+    const approved = parseToolResponse(handler("test", { status: "approved" }));
     expect(approved.requests).toHaveLength(1);
     expect(approved.requests[0].id).toBe("REQ-1");
     expect(approved.requests[0].original_text).toBe("john@example.com");
@@ -159,7 +159,7 @@ describe("fogclaw_requests handler", () => {
 
   it("returns error for invalid status filter", () => {
     const handler = createRequestsListHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({ status: "invalid" }));
+    const parsed = parseToolResponse(handler("test", { status: "invalid" }));
     expect(parsed.error).toContain("Invalid status filter");
   });
 
@@ -168,7 +168,7 @@ describe("fogclaw_requests handler", () => {
     backlog.resolveRequest("REQ-1", "follow_up", "Why do you need this?");
 
     const handler = createRequestsListHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({ status: "follow_up" }));
+    const parsed = parseToolResponse(handler("test", { status: "follow_up" }));
     expect(parsed.requests[0].follow_up_message).toBe("Why do you need this?");
   });
 
@@ -177,7 +177,7 @@ describe("fogclaw_requests handler", () => {
     backlog.resolveRequest("REQ-1", "deny", "Not authorized");
 
     const handler = createRequestsListHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({ status: "denied" }));
+    const parsed = parseToolResponse(handler("test", { status: "denied" }));
     expect(parsed.requests[0].response_message).toBe("Not authorized");
   });
 });
@@ -203,7 +203,7 @@ describe("fogclaw_resolve handler", () => {
   it("approves a request and returns original text", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_id: "REQ-1", action: "approve" }),
+      handler("test", { request_id: "REQ-1", action: "approve" }),
     );
     expect(parsed.status).toBe("approved");
     expect(parsed.original_text).toBe("john@example.com");
@@ -213,7 +213,7 @@ describe("fogclaw_resolve handler", () => {
   it("denies a request", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_id: "REQ-1", action: "deny", message: "Not needed" }),
+      handler("test", { request_id: "REQ-1", action: "deny", message: "Not needed" }),
     );
     expect(parsed.status).toBe("denied");
     expect(parsed.message).toBe("Not needed");
@@ -222,7 +222,7 @@ describe("fogclaw_resolve handler", () => {
   it("sends follow-up question", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({
+      handler("test", {
         request_id: "REQ-1",
         action: "follow_up",
         message: "Why do you need this email?",
@@ -235,7 +235,7 @@ describe("fogclaw_resolve handler", () => {
   it("returns error for invalid action", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_id: "REQ-1", action: "invalid" }),
+      handler("test", { request_id: "REQ-1", action: "invalid" }),
     );
     expect(parsed.error).toContain("Invalid action");
   });
@@ -243,14 +243,14 @@ describe("fogclaw_resolve handler", () => {
   it("returns error for unknown request ID", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_id: "REQ-999", action: "approve" }),
+      handler("test", { request_id: "REQ-999", action: "approve" }),
     );
     expect(parsed.error).toContain("not found");
   });
 
   it("returns error when no request_id or request_ids provided", () => {
     const handler = createResolveHandler(backlog, config, logger);
-    const parsed = parseToolResponse(handler({ action: "approve" }));
+    const parsed = parseToolResponse(handler("test", { action: "approve" }));
     expect(parsed.error).toContain("request_id or request_ids must be provided");
   });
 
@@ -258,7 +258,7 @@ describe("fogclaw_resolve handler", () => {
     backlog.createRequest("[SSN_1]", "SSN", "Need for verification");
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_ids: ["REQ-1", "REQ-2"], action: "approve" }),
+      handler("test", { request_ids: ["REQ-1", "REQ-2"], action: "approve" }),
     );
     expect(parsed.results).toHaveLength(2);
     expect(parsed.results[0].status).toBe("approved");
@@ -270,7 +270,7 @@ describe("fogclaw_resolve handler", () => {
   it("batch resolve returns errors for invalid IDs", () => {
     const handler = createResolveHandler(backlog, config, logger);
     const parsed = parseToolResponse(
-      handler({ request_ids: ["REQ-1", "REQ-999"], action: "approve" }),
+      handler("test", { request_ids: ["REQ-1", "REQ-999"], action: "approve" }),
     );
     expect(parsed.results[0].status).toBe("approved");
     expect(parsed.results[1].error).toContain("not found");
@@ -278,7 +278,7 @@ describe("fogclaw_resolve handler", () => {
 
   it("emits audit log on resolve", () => {
     const handler = createResolveHandler(backlog, config, logger);
-    handler({ request_id: "REQ-1", action: "approve" });
+    handler("test", { request_id: "REQ-1", action: "approve" });
 
     const auditCalls = logger.info.mock.calls.filter(
       (call: string[]) => call[0].includes("access_request_resolved"),
@@ -291,7 +291,7 @@ describe("fogclaw_resolve handler", () => {
   it("emits audit for each request in batch resolve", () => {
     backlog.createRequest("[SSN_1]", "SSN", "r2");
     const handler = createResolveHandler(backlog, config, logger);
-    handler({ request_ids: ["REQ-1", "REQ-2"], action: "deny" });
+    handler("test", { request_ids: ["REQ-1", "REQ-2"], action: "deny" });
 
     const auditCalls = logger.info.mock.calls.filter(
       (call: string[]) => call[0].includes("access_request_resolved"),
@@ -311,7 +311,7 @@ describe("full lifecycle integration", () => {
     // Step 1: Agent submits request
     const requestHandler = createRequestAccessHandler(backlog, config, logger);
     const requestResponse = parseToolResponse(
-      requestHandler({
+      requestHandler("test", {
         placeholder: "[EMAIL_1]",
         entity_type: "EMAIL",
         reason: "Need to send follow-up",
@@ -322,21 +322,21 @@ describe("full lifecycle integration", () => {
 
     // Step 2: User lists pending requests
     const listHandler = createRequestsListHandler(backlog, config, logger);
-    const listResponse = parseToolResponse(listHandler({ status: "pending" }));
+    const listResponse = parseToolResponse(listHandler("test", { status: "pending" }));
     expect(listResponse.requests).toHaveLength(1);
     expect(listResponse.requests[0].reason).toBe("Need to send follow-up");
 
     // Step 3: User approves
     const resolveHandler = createResolveHandler(backlog, config, logger);
     const resolveResponse = parseToolResponse(
-      resolveHandler({ request_id: "REQ-1", action: "approve" }),
+      resolveHandler("test", { request_id: "REQ-1", action: "approve" }),
     );
     expect(resolveResponse.status).toBe("approved");
     expect(resolveResponse.original_text).toBe("john@example.com");
 
     // Step 4: Agent checks approved requests
     const approvedResponse = parseToolResponse(
-      listHandler({ status: "approved" }),
+      listHandler("test", { status: "approved" }),
     );
     expect(approvedResponse.requests).toHaveLength(1);
     expect(approvedResponse.requests[0].original_text).toBe("john@example.com");
@@ -354,14 +354,14 @@ describe("full lifecycle integration", () => {
     const resolveHandler = createResolveHandler(backlog, config, logger);
 
     // Agent requests
-    requestHandler({
+    requestHandler("test", {
       placeholder: "[SSN_1]",
       entity_type: "SSN",
       reason: "Need for identity verification",
     });
 
     // User asks follow-up
-    resolveHandler({
+    resolveHandler("test", {
       request_id: "REQ-1",
       action: "follow_up",
       message: "What specific verification requires the SSN?",
@@ -369,7 +369,7 @@ describe("full lifecycle integration", () => {
 
     // Agent checks follow-up
     const followUpList = parseToolResponse(
-      listHandler({ status: "follow_up" }),
+      listHandler("test", { status: "follow_up" }),
     );
     expect(followUpList.requests[0].follow_up_message).toBe(
       "What specific verification requires the SSN?",
@@ -377,7 +377,7 @@ describe("full lifecycle integration", () => {
 
     // User approves after receiving context
     const resolved = parseToolResponse(
-      resolveHandler({ request_id: "REQ-1", action: "approve" }),
+      resolveHandler("test", { request_id: "REQ-1", action: "approve" }),
     );
     expect(resolved.original_text).toBe("123-45-6789");
   });

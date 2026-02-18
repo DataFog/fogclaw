@@ -20,28 +20,37 @@ A developer sees this working by running `npm run test:e2e` and observing: (1) a
 
 ## Progress
 
-- [ ] (2026-02-17) P1 [M1]: Install Playwright and `@playwright/test` as devDependencies
-- [ ] (2026-02-17) P2 [M1]: Create `tests/e2e/` directory structure with fixtures and config
-- [ ] (2026-02-17) P3 [M1]: Add `test:e2e` npm script to `package.json`
-- [ ] (2026-02-17) P4 [M1]: Create PII fixture file at `tests/e2e/fixtures/pii-sample.txt`
-- [ ] (2026-02-17) P5 [M1]: Create Playwright config at `tests/e2e/playwright.config.ts`
-- [ ] (2026-02-17) P6 [M2]: Write E2E test for plugin update and verification
-- [ ] (2026-02-17) P7 [M2]: Write E2E test for `before_agent_start` hook — send PII prompt, assert redaction tokens in response
-- [ ] (2026-02-17) P8 [M2]: Write E2E test for `tool_result_persist` hook — trigger file read containing PII, assert redaction
-- [ ] (2026-02-17) P9 [M2]: Write E2E test for `message_sending` hook — verify outbound message redaction
-- [ ] (2026-02-17) P10 [M3]: Write E2E test for access request backlog cycle (request → list → approve → verify original)
-- [ ] (2026-02-17) P11 [M4]: Add Playwright browser automation for Dashboard visual evidence
-- [ ] (2026-02-17) P12 [M4]: Add video recording configuration and screenshot capture at key steps
-- [ ] (2026-02-17) P13 [M4]: Validate full E2E suite runs end-to-end with video output
+- [x] (2026-02-17) P1 [M1]: Install Playwright and `@playwright/test` as devDependencies
+- [x] (2026-02-17) P2 [M1]: Create `tests/e2e/` directory structure with fixtures and config
+- [x] (2026-02-17) P3 [M1]: Add `test:e2e` npm script to `package.json`
+- [x] (2026-02-17) P4 [M1]: Create PII fixture file at `tests/e2e/fixtures/pii-sample.txt`
+- [x] (2026-02-17) P5 [M1]: Create Playwright config at `tests/e2e/playwright.config.ts` (with globalSetup/globalTeardown)
+- [x] (2026-02-17) P6 [M2]: Write E2E test for plugin verification (setup test)
+- [x] (2026-02-17) P7 [M2]: Write E2E test for `before_agent_start` hook — send PII prompt, assert no raw PII in response
+- [x] (2026-02-17) P8 [M2]: Write E2E test for `tool_result_persist` hook — trigger file read containing PII, assert redaction
+- [x] (2026-02-17) P9 [M2]: Write E2E test for `message_sending` hook — verify outbound message redaction
+- [x] (2026-02-17) P10 [M3]: Write E2E test for access request backlog cycle (request → list → approve → reveal)
+- [x] (2026-02-17) P11 [M4]: Add Playwright browser automation for Dashboard visual evidence
+- [x] (2026-02-17) P12 [M4]: Add video recording configuration and screenshot capture at key steps
+- [x] (2026-02-17) P13 [M4]: Validate full E2E suite runs end-to-end with video output
+- [x] (2026-02-17) P14 [BONUS]: Isolated OpenClaw profile per run (globalSetup creates profile, globalTeardown destroys it)
+- [x] (2026-02-17) P15 [BUGFIX]: Fix tool schema `schema:` → `parameters:` for OpenClaw compatibility
+- [x] (2026-02-17) P16 [BUGFIX]: Fix tool handler `handler:` → `execute:` with correct `(toolCallId, params)` signature
 
 ## Surprises & Discoveries
 
-(None yet — will be populated during implementation.)
+- OpenClaw plugin tool registration expects `parameters:` (not `schema:`) for the JSON Schema and `execute(toolCallId, params, signal?, onUpdate?)` (not `handler(params)`) for the handler function. All 6 FogClaw tools had both wrong, causing "Cannot read properties of undefined (reading 'properties')" errors that prevented the LLM from being called at all (input tokens: 0).
+- The `--profile` flag for OpenClaw creates fully isolated state at `~/.openclaw-<name>/` with separate sessions, config, and credentials. Combined with `plugins.load.paths` config, this enables hermetic E2E test runs.
+- Agent sessions are created implicitly via `--to <phone>` flag, not via a `sessions create` command.
 
 ## Decision Log
 
 - Decision: Hybrid CLI + browser architecture. CLI (`openclaw agent --json`) handles prompt/response assertions; Playwright handles Dashboard screenshots and video recording.
   Rationale: CLI is faster, returns structured JSON, and avoids browser flakiness for the critical assertion path. Browser adds visual evidence.
+  Date/Author: 2026-02-17 / sidmohan
+
+- Decision: Isolated OpenClaw profile per E2E run using `--profile e2e-test`.
+  Rationale: Prevents test pollution between runs. Each run creates a fresh profile with its own gateway on port 19001, copies auth credentials, loads FogClaw from local build via `plugins.load.paths`, and cleans up after. No dependency on the user's running OpenClaw instance.
   Date/Author: 2026-02-17 / sidmohan
 
 - Decision: Use `@playwright/test` (not Vitest + Playwright) for the E2E test suite.
@@ -365,3 +374,4 @@ CLI tools used in tests (from OpenClaw, not npm):
 ## Revision Notes
 
 - 2026-02-17T20:15:00Z: Initial plan draft. 4 milestones: infrastructure setup, CLI-driven scanning layer tests, backlog workflow test, browser visual evidence with video recording. Hybrid CLI + browser architecture based on spike findings.
+- 2026-02-17T21:17:00Z: Implementation complete. All 4 milestones done plus two critical bugfixes discovered during E2E testing: (1) `schema:` → `parameters:` for OpenClaw tool schema compatibility, (2) `handler:` → `execute:` with correct `(toolCallId, params)` signature. Added isolated profile support via globalSetup/globalTeardown. 6/6 E2E tests pass with real LLM responses, video recordings, and screenshots captured.
