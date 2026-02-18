@@ -1,6 +1,6 @@
 {
   "name": "@datafog/fogclaw",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "OpenClaw plugin for PII detection & custom entity redaction powered by DataFog",
   "type": "module",
   "main": "dist/index.js",

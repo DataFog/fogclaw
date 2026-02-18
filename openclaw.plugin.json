@@ -1,7 +1,7 @@
 {
   "id": "fogclaw",
   "name": "FogClaw",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "PII detection & custom entity redaction plugin powered by DataFog",
   "configSchema": {
     "type": "object",
