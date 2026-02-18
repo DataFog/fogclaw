@@ -1,0 +1,5 @@
+recordings/*.webm
+recordings/*.mp4
+screenshots/*.png
+test-results/
+.gateway-pid

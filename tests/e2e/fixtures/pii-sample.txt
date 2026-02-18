@@ -1,0 +1,10 @@
+Employee Record — Confidential
+
+Name: John Smith
+Email: john.smith@example.com
+Phone: (555) 867-5309
+Social Security Number: 123-45-6789
+Credit Card: 4111-1111-1111-1111
+
+Please contact John at john.smith@example.com regarding the quarterly review.
+His backup number is 555-867-5309.

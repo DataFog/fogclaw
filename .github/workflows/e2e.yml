@@ -1,0 +1,85 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Install OpenClaw CLI
+        run: npm install -g openclaw
+
+      - name: Configure OpenClaw auth
+        run: |
+          mkdir -p ~/.openclaw/agents/main/agent
+          cat > ~/.openclaw/agents/main/agent/auth-profiles.json << 'AUTHEOF'
+          {
+            "profiles": {
+              "anthropic:default": {
+                "provider": "anthropic",
+                "mode": "api_key",
+                "apiKey": "${{ secrets.ANTHROPIC_API_KEY }}"
+              }
+            }
+          }
+          AUTHEOF
+
+      - name: Run E2E tests
+        id: e2e
+        run: npm run test:e2e 2>&1 | tee e2e-output.txt
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: tests/e2e/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload recordings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-recordings
+          path: tests/e2e/recordings/
+          if-no-files-found: ignore
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+      - name: Notify Discord
+        if: always()
+        run: bash tests/e2e/notify-discord.sh
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          E2E_STATUS: ${{ steps.e2e.outcome }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_REF: ${{ github.ref_name }}

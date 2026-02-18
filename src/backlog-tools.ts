@@ -39,13 +39,13 @@ export function createRequestAccessHandler(
   backlog: BacklogStore,
   config: FogClawConfig,
   logger?: Logger,
-): (params: {
+): (toolCallId: string, params: {
   placeholder: string;
   entity_type: string;
   reason: string;
   context?: string;
 }) => ToolResponse {
-  return (params) => {
+  return (_toolCallId, params) => {
     try {
       const request = backlog.createRequest(
         params.placeholder,
@@ -85,8 +85,8 @@ export function createRequestsListHandler(
   backlog: BacklogStore,
   config: FogClawConfig,
   logger?: Logger,
-): (params: { status?: string }) => ToolResponse {
-  return (params) => {
+): (toolCallId: string, params: { status?: string }) => ToolResponse {
+  return (_toolCallId, params) => {
     const validStatuses = ["pending", "approved", "denied", "follow_up"];
     const statusFilter = params.status as
       | "pending"
@@ -151,13 +151,13 @@ export function createResolveHandler(
   backlog: BacklogStore,
   config: FogClawConfig,
   logger?: Logger,
-): (params: {
+): (toolCallId: string, params: {
   request_id?: string;
   request_ids?: string[];
   action: string;
   message?: string;
 }) => ToolResponse {
-  return (params) => {
+  return (_toolCallId, params) => {
     const validActions = ["approve", "deny", "follow_up"];
     if (!validActions.includes(params.action)) {
       return errorResponse(
