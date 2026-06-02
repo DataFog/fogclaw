@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { env } from "@xenova/transformers";
 
 import type { Entity } from "../types.js";
 import { canonicalType } from "../types.js";
@@ -53,7 +52,7 @@ function toAbsolutePath(value: string): string {
 }
 
 function getModelCacheDir(): string {
-  return env.localModelPath ?? path.join(process.cwd(), ".cache");
+  return process.env.TRANSFORMERS_CACHE ?? path.join(process.cwd(), ".cache");
 }
 
 function sanitizeModelReference(modelPath: string): string {

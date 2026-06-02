@@ -1,9 +1,9 @@
 /**
  * Async message_sending hook handler for FogClaw.
  *
- * Scans outbound message text for PII using the full Scanner
- * (regex + GLiNER), redacts detected entities, and returns
- * modified content. Never cancels message delivery.
+ * Scans outbound message text for PII using the Scanner's regex-only path,
+ * redacts detected entities, and returns modified content. Never cancels
+ * message delivery.
  *
  * Note: message_sending is defined in OpenClaw but not yet invoked
  * upstream. This handler activates automatically when wired.
@@ -40,9 +40,8 @@ export interface MessageSendingResult {
 /**
  * Create an async message_sending hook handler.
  *
- * Uses the full Scanner (regex + GLiNER) since this hook supports
- * async handlers. All guardrail modes produce span-level redaction;
- * cancel is never returned.
+ * Uses regex only to keep final reply delivery fast. All guardrail modes
+ * produce span-level redaction; cancel is never returned.
  */
 export function createMessageSendingHandler(
   config: FogClawConfig,
@@ -57,7 +56,7 @@ export function createMessageSendingHandler(
     const text = event.content;
     if (!text) return;
 
-    const result = await scanner.scan(text);
+    const result = scanner.scanRegexOnly(text);
     if (result.entities.length === 0) return;
 
     // All modes produce span-level redaction for outbound messages.

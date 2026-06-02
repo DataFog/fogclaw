@@ -169,6 +169,28 @@ describe("CREDIT_CARD", () => {
 });
 
 // ---------------------------------------------------------------------------
+// SECRET / TOKEN
+// ---------------------------------------------------------------------------
+describe("SECRET", () => {
+  it("detects assigned secrets", () => {
+    const entities = assertSpans("client_secret=abcDEF123456 and password: hunter2222");
+    const secrets = entities.filter((e) => e.label === "SECRET");
+    expect(secrets.map((e) => e.text)).toEqual(["client_secret=abcDEF123456", "password: hunter2222"]);
+  });
+});
+
+describe("TOKEN", () => {
+  it("detects assigned tokens and bearer values", () => {
+    const entities = assertSpans("token: Bearer tok_1234567890 api-key=key_1234567890");
+    const tokens = entities.filter((e) => e.label === "TOKEN");
+    expect(tokens.map((e) => e.text)).toEqual([
+      "token: Bearer tok_1234567890",
+      "api-key=key_1234567890",
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // IP_ADDRESS
 // ---------------------------------------------------------------------------
 describe("IP_ADDRESS", () => {

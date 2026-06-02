@@ -27,6 +27,16 @@ const PATTERNS: PatternDef[] = [
       /\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|(?:(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2})[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4})|(?:3[47]\d{2}[-\s]?\d{6}[-\s]?\d{5}))\b/g,
   },
   {
+    label: "SECRET",
+    pattern:
+      /(?<![A-Za-z0-9_])(?:secret|client[_-]?secret|app[_-]?secret|appSecret|password|passwd|pwd|private[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9._~+/=\-]{8,}["']?/gi,
+  },
+  {
+    label: "TOKEN",
+    pattern:
+      /(?<![A-Za-z0-9_])(?:token|access[_-]?token|refresh[_-]?token|api[_-]?key|authorization)\s*[:=]\s*["']?(?:Bearer\s+)?[A-Za-z0-9._~+/=\-]{8,}["']?/gi,
+  },
+  {
     label: "IP_ADDRESS",
     pattern:
       /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.(?:25[0-5]|2[0-4]\d|1?\d?\d)\.(?:25[0-5]|2[0-4]\d|1?\d?\d)\.(?:25[0-5]|2[0-4]\d|1?\d?\d))\b/g,
