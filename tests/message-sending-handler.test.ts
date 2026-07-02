@@ -79,6 +79,42 @@ describe("createMessageSendingHandler", () => {
     expect(result!.content).not.toContain("john@example.com");
   });
 
+  it("uses regex-only scanning to keep outbound delivery fast", async () => {
+    const config = makeConfig();
+    const scanner = new Scanner(config);
+    const fullScan = vi.spyOn(scanner, "scan").mockRejectedValue(new Error("GLiNER path should not run"));
+    const handler = createMessageSendingHandler(config, scanner);
+
+    const result = await handler(
+      { to: "user", content: "Send to john@example.com" },
+      makeCtx(),
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.content).toContain("[EMAIL_1]");
+    expect(fullScan).not.toHaveBeenCalled();
+  });
+
+  it("redacts secrets and tokens in outbound message", async () => {
+    const config = makeConfig();
+    const scanner = new Scanner(config);
+    const handler = createMessageSendingHandler(config, scanner);
+
+    const result = await handler(
+      {
+        to: "user",
+        content: "secret=abcDEF123456 token: Bearer tok_1234567890",
+      },
+      makeCtx(),
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.content).toContain("[SECRET_1]");
+    expect(result!.content).toContain("[TOKEN_1]");
+    expect(result!.content).not.toContain("abcDEF123456");
+    expect(result!.content).not.toContain("tok_1234567890");
+  });
+
   it("returns void when no PII found", async () => {
     const config = makeConfig();
     const scanner = new Scanner(config);

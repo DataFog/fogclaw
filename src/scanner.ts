@@ -81,6 +81,13 @@ export class Scanner {
     return { entities: merged, text };
   }
 
+  scanRegexOnly(text: string): { entities: Entity[]; text: string } {
+    if (!text) return { entities: [], text };
+
+    const entities = deduplicateEntities(this.filterByPolicy(this.regexEngine.scan(text)));
+    return { entities, text };
+  }
+
   private filterByConfidence(entities: Entity[]): Entity[] {
     return entities.filter((entity) => {
       const threshold = this.getThresholdForLabel(entity.label);
