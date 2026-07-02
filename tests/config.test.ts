@@ -50,6 +50,42 @@ describe("FogClaw config", () => {
     ).toThrow(/invalid regex pattern/);
   });
 
+  it("rejects allowlist patterns longer than 512 characters", () => {
+    expect(() =>
+      loadConfig({
+        allowlist: {
+          values: [],
+          patterns: ["a".repeat(513)],
+          entities: {},
+        },
+      }),
+    ).toThrow(/at most 512 characters/);
+  });
+
+  it("rejects allowlist patterns with nested quantifiers", () => {
+    expect(() =>
+      loadConfig({
+        allowlist: {
+          values: [],
+          patterns: ["(a+)+"],
+          entities: {},
+        },
+      }),
+    ).toThrow(/nested/);
+  });
+
+  it("accepts allowlist patterns with non-nested quantifiers", () => {
+    const config = loadConfig({
+      allowlist: {
+        values: [],
+        patterns: ["^internal-[a-z]+$"],
+        entities: {},
+      },
+    });
+
+    expect(config.allowlist.patterns).toEqual(["^internal-[a-z]+$"]);
+  });
+
   it("canonicalizes allowlist entity keys", () => {
     const config = loadConfig({
       allowlist: {

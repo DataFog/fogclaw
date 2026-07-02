@@ -66,12 +66,12 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(requestsTool).toBeDefined();
     expect(resolveTool).toBeDefined();
 
-    expect(scanTool.schema.required).toContain("text");
-    expect(previewTool.schema.required).toContain("text");
-    expect(redactTool.schema.required).toContain("text");
-    expect(requestAccessTool.schema.required).toContain("placeholder");
-    expect(requestsTool.schema.required).toEqual([]);
-    expect(resolveTool.schema.required).toContain("action");
+    expect(scanTool.parameters.required).toContain("text");
+    expect(previewTool.parameters.required).toContain("text");
+    expect(redactTool.parameters.required).toContain("text");
+    expect(requestAccessTool.parameters.required).toContain("placeholder");
+    expect(requestsTool.parameters.required).toEqual([]);
+    expect(resolveTool.parameters.required).toContain("action");
   });
 
   it("validates hook and tool behavior against real Scanner execution path", async () => {
@@ -91,7 +91,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(hookResult?.prependContext).not.toContain("john@example.com");
 
     const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
-    const scanOutput = await scanTool.handler({
+    const scanOutput = await scanTool.execute("test", {
       text: "Email me at john@example.com today.",
     });
 
@@ -103,7 +103,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(scanParsed.entities[0].label).toBe("EMAIL");
 
     const redactTool = api.tools.find((tool: any) => tool.id === "fogclaw_redact");
-    const redactOutput = await redactTool.handler({
+    const redactOutput = await redactTool.execute("test", {
       text: "Email me at john@example.com today.",
       strategy: "token",
     });
@@ -120,7 +120,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
 
     const previewTool = api.tools.find((tool: any) => tool.id === "fogclaw_preview");
 
-    const previewOutput = await previewTool.handler({
+    const previewOutput = await previewTool.execute("test", {
       text: "Email me at john@example.com about Acme Corp tomorrow.",
     });
 
@@ -142,7 +142,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     plugin.register(api);
     const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
 
-    const scanOutput = await scanTool.handler({
+    const scanOutput = await scanTool.execute("test", {
       text: "Confidential note for Acme project roadmap",
       custom_labels: ["project", "competitor name"],
     });

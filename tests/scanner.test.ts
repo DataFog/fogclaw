@@ -246,6 +246,47 @@ describe("Scanner", () => {
     expect(result.entities.find((e) => e.label === "EMAIL")).toBeUndefined();
   });
 
+  it("does not let a partial pattern match suppress a finding", async () => {
+    const allowlistScanner = new Scanner(
+      makeConfig({
+        allowlist: {
+          values: [],
+          // Matches a substring of the detected email, not the full entity
+          // text — must never suppress the finding.
+          patterns: ["example"],
+          entities: {},
+        },
+      }),
+    );
+    await allowlistScanner.initialize();
+
+    const result = await allowlistScanner.scan(
+      "This is " + "test@example" + ".com for redaction.",
+    );
+    expect(result.entities.find((e) => e.label === "EMAIL")).toBeDefined();
+  });
+
+  it("skips pattern matching for entities longer than 512 chars (fail-safe: finding kept)", () => {
+    const allowlistScanner = new Scanner(
+      makeConfig({
+        allowlist: {
+          values: [],
+          patterns: [".*"],
+          entities: {},
+        },
+      }),
+    );
+
+    const longEmail = "a".repeat(520) + "@example" + ".com";
+    const shortEmail = "b@example" + ".com";
+
+    const longResult = allowlistScanner.scanRegexOnly(`Contact ${longEmail} now.`);
+    expect(longResult.entities.find((e) => e.label === "EMAIL")).toBeDefined();
+
+    const shortResult = allowlistScanner.scanRegexOnly(`Contact ${shortEmail} now.`);
+    expect(shortResult.entities.find((e) => e.label === "EMAIL")).toBeUndefined();
+  });
+
   it("deduplicates overlapping spans keeping higher confidence", async () => {
     // Scan text that might produce overlapping entities
     // The dedup logic should keep higher confidence when spans overlap

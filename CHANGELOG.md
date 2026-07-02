@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.0
+
+### Fixed
+
+- **Tool registration matches the OpenClaw plugin contract** — all 6 tools were registered with `schema:`/`handler:`, which the runtime does not recognize; tool calls failed before reaching the model. Tools now register with `parameters:` and `execute(toolCallId, params)`. Discovered in E2E testing (PR #3), verified against current upstream docs.
+- **Outbound redaction stays on the regex path** (#4, thanks @hanhuihanhui) — `message_sending` now uses regex-only scanning to keep reply delivery fast, consistent with the tool-result path. Also removes an undeclared direct import of `@xenova/transformers`.
+
+### Added
+
+- **SECRET and TOKEN detection** (#4) — assigned credentials (`client_secret=…`, `password: …`) and tokens (`api_key=…`, `Bearer …`) are now detected and redacted by the regex engine.
+- **`contracts.tools` manifest declaration** — the six FogClaw tools are declared in `openclaw.plugin.json`, required for tool discovery in current OpenClaw.
+- **`openclaw.compat` metadata** in `package.json` (`pluginApi >=2026.3.24-beta.2`); Node engine floor raised to 22.19.
+
+### Security
+
+- **Allowlist hardening** (ported from datafog-python 4.7.0) — patterns must match the full entity text, so a partial match never suppresses a finding; quantified groups containing nested quantifiers (e.g. `(a+)+`) are rejected at config time to prevent catastrophic backtracking on attacker-influenced entity text; patterns are capped at 512 chars; entities longer than 512 chars skip pattern matching fail-safe (the finding is kept).
+- **Dependency vulnerabilities cleared** — `npm audit` reported 10 vulnerabilities (2 critical); now 0. protobufjs/rollup/tar transitives fixed, vitest 2→4, sharp 0.34.5→0.35.3.
+
+### Known follow-ups
+
+- `before_agent_start` is deprecated upstream (compatibility-only): migrate the inbound guardrail to `before_prompt_build`, and consider `before_agent_run` for hard blocks (requires users to set `hooks.allowConversationAccess`).
+- Consider registering `reply_payload_sending` for outbound coverage of media captions and normalized payloads.
+- onnxruntime pins unchanged: gliner 0.0.19 (latest) expects onnxruntime 1.19.x internals; revisit when gliner updates.
+
 ## 0.3.0
 
 ### Added

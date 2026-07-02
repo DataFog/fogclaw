@@ -196,7 +196,7 @@ const fogclaw = {
         id: "fogclaw_scan",
         description:
           "Scan text for PII and custom entities. Returns detected entities with types, positions, and confidence scores.",
-        schema: {
+        parameters: {
           type: "object",
           properties: {
             text: {
@@ -212,13 +212,11 @@ const fogclaw = {
           },
           required: ["text"],
         },
-        handler: async ({
-          text,
-          custom_labels,
-        }: {
-          text: string;
-          custom_labels?: string[];
-        }) => {
+        execute: async (
+          _toolCallId: string,
+          params: { text: string; custom_labels?: string[] },
+        ) => {
+          const { text, custom_labels } = params;
           const result = await scanner.scan(text, custom_labels);
           return {
             content: [
@@ -250,7 +248,7 @@ const fogclaw = {
         id: "fogclaw_preview",
         description:
           "Preview which entities will be blocked, warned, or redacted and the redacted message, without changing runtime behavior.",
-        schema: {
+        parameters: {
           type: "object",
           properties: {
             text: {
@@ -271,15 +269,15 @@ const fogclaw = {
           },
           required: ["text"],
         },
-        handler: async ({
-          text,
-          strategy,
-          custom_labels,
-        }: {
-          text: string;
-          strategy?: "token" | "mask" | "hash";
-          custom_labels?: string[];
-        }) => {
+        execute: async (
+          _toolCallId: string,
+          params: {
+            text: string;
+            strategy?: "token" | "mask" | "hash";
+            custom_labels?: string[];
+          },
+        ) => {
+          const { text, strategy, custom_labels } = params;
           const result = await scanner.scan(text, custom_labels);
           const plan = buildGuardrailPlan(result.entities, config);
           const summary = planToSummary(plan);
@@ -332,7 +330,7 @@ const fogclaw = {
         id: "fogclaw_redact",
         description:
           "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced.",
-        schema: {
+        parameters: {
           type: "object",
           properties: {
             text: {
@@ -353,15 +351,15 @@ const fogclaw = {
           },
           required: ["text"],
         },
-        handler: async ({
-          text,
-          strategy,
-          custom_labels,
-        }: {
-          text: string;
-          strategy?: "token" | "mask" | "hash";
-          custom_labels?: string[];
-        }) => {
+        execute: async (
+          _toolCallId: string,
+          params: {
+            text: string;
+            strategy?: "token" | "mask" | "hash";
+            custom_labels?: string[];
+          },
+        ) => {
+          const { text, strategy, custom_labels } = params;
           const result = await scanner.scan(text, custom_labels);
           const redacted = redact(
             text,
@@ -394,7 +392,7 @@ const fogclaw = {
       id: "fogclaw_request_access",
       description:
         "Request access to redacted PII data. Use when you encounter a redacted placeholder (like [EMAIL_1]) and need the original text to complete a task. A user must review and approve the request.",
-      schema: {
+      parameters: {
         type: "object",
         properties: {
           placeholder: {
@@ -419,7 +417,7 @@ const fogclaw = {
         },
         required: ["placeholder", "entity_type", "reason"],
       },
-      handler: createRequestAccessHandler(backlogStore, config, api.logger),
+      execute: createRequestAccessHandler(backlogStore, config, api.logger),
     });
 
     // --- TOOL: List access requests ---
@@ -428,7 +426,7 @@ const fogclaw = {
       id: "fogclaw_requests",
       description:
         "List PII access requests. Use to review pending requests or check for approved/denied responses. Filter by status: pending, approved, denied, follow_up.",
-      schema: {
+      parameters: {
         type: "object",
         properties: {
           status: {
@@ -440,7 +438,7 @@ const fogclaw = {
         },
         required: [],
       },
-      handler: createRequestsListHandler(backlogStore, config, api.logger),
+      execute: createRequestsListHandler(backlogStore, config, api.logger),
     });
 
     // --- TOOL: Resolve access request ---
@@ -449,7 +447,7 @@ const fogclaw = {
       id: "fogclaw_resolve",
       description:
         'Resolve a PII access request. Approve to reveal the original text, deny to reject, or follow_up to ask the agent for more context. Use request_id for single or request_ids for batch.',
-      schema: {
+      parameters: {
         type: "object",
         properties: {
           request_id: {
@@ -476,7 +474,7 @@ const fogclaw = {
         },
         required: ["action"],
       },
-      handler: createResolveHandler(backlogStore, config, api.logger),
+      execute: createResolveHandler(backlogStore, config, api.logger),
     });
 
     api.logger?.info(
