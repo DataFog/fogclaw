@@ -1,8 +1,18 @@
 {
   "id": "fogclaw",
   "name": "FogClaw",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "PII detection & custom entity redaction plugin powered by DataFog",
+  "contracts": {
+    "tools": [
+      "fogclaw_scan",
+      "fogclaw_preview",
+      "fogclaw_redact",
+      "fogclaw_request_access",
+      "fogclaw_requests",
+      "fogclaw_resolve"
+    ]
+  },
   "configSchema": {
     "type": "object",
     "properties": {
@@ -137,7 +147,7 @@
     },
     "allowlist": {
       "label": "Allowlist / Exemptions",
-      "help": "Global and per-entity allowlist entries to exclude from enforcement. Supports exact values and regex patterns.",
+      "help": "Global and per-entity allowlist entries to exclude from enforcement. Supports exact values and regex patterns; patterns must match the full entity text (a partial match never suppresses a finding).",
       "advanced": true
     },
     "auditEnabled": {
