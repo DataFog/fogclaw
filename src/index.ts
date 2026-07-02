@@ -396,7 +396,6 @@ const fogclaw: OpenClawPluginDefinition = definePluginEntry({
                     },
                     redactedText: redacted.redacted_text,
                     redactionStrategy: strategy ?? config.redactStrategy,
-                    mapping: redacted.mapping,
                   },
                   null,
                   2,
@@ -414,7 +413,7 @@ const fogclaw: OpenClawPluginDefinition = definePluginEntry({
         name: "fogclaw_redact",
         label: "FogClaw Redact",
         description:
-          "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced.",
+          "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced. Original values are never returned; to recover a specific placeholder, use fogclaw_request_access (a user must approve).",
         parameters: Type.Object({
           text: Type.String({ description: "Text to scan and redact" }),
           strategy: Type.Optional(
@@ -444,6 +443,9 @@ const fogclaw: OpenClawPluginDefinition = definePluginEntry({
             result.entities,
             strategy ?? config.redactStrategy,
           );
+          // The mapping never goes back to the model — reveals go through
+          // the access-request backlog (user approval).
+          redactionMapStore.addMapping(redacted.mapping);
           return {
             details: undefined,
             content: [
@@ -453,7 +455,8 @@ const fogclaw: OpenClawPluginDefinition = definePluginEntry({
                   {
                     redacted_text: redacted.redacted_text,
                     entities_found: result.entities.length,
-                    mapping: redacted.mapping,
+                    placeholders: Object.keys(redacted.mapping),
+                    note: "Original values are not returned. Use fogclaw_request_access with a placeholder to request user-approved access.",
                   },
                   null,
                   2,
