@@ -9,6 +9,17 @@ import {
 const VALID_GUARDRAIL_MODES: GuardrailAction[] = ["redact", "block", "warn"];
 const VALID_REDACT_STRATEGIES: RedactStrategy[] = ["token", "mask", "hash"];
 
+// JS RegExp backtracks; a quantified group containing another quantifier
+// (e.g. `(a+)+`) can take exponential time on adversarial input, and entity
+// text can be attacker-influenced (LLM messages, tool output). Reject the
+// construct at config time rather than matching under it. Mirrors the
+// datafog-python 4.7.0 allowlist hardening.
+const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*(?<!\\)[+*}](?:[^()\\]|\\.)*\)\s*[+*{]/;
+export const MAX_ALLOWLIST_PATTERN_LENGTH = 512;
+// Entities longer than this skip pattern matching (fail-safe: the finding
+// is kept, never suppressed) so match time stays bounded.
+export const MAX_PATTERN_SUBJECT_LENGTH = 512;
+
 function ensureStringList(value: unknown, path: string): string[] {
   if (!Array.isArray(value)) {
     throw new Error(`${path} must be an array of strings`);
@@ -39,6 +50,19 @@ function ensureEntityAllowlist(value: unknown): EntityAllowlist {
   const patterns = ensureStringList(raw.patterns ?? [], "allowlist.patterns");
 
   for (const pattern of patterns) {
+    if (pattern.length > MAX_ALLOWLIST_PATTERN_LENGTH) {
+      throw new Error(
+        `allowlist.patterns entries must be at most ${MAX_ALLOWLIST_PATTERN_LENGTH} characters`,
+      );
+    }
+
+    if (NESTED_QUANTIFIER.test(pattern)) {
+      throw new Error(
+        `allowlist.patterns contains a quantified group with a nested quantifier ("${pattern}"), ` +
+          "which risks catastrophic backtracking; rewrite the pattern without nesting quantifiers",
+      );
+    }
+
     try {
       new RegExp(pattern);
     } catch {

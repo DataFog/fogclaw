@@ -1,5 +1,6 @@
 import type { Entity, FogClawConfig } from "./types.js";
 import { canonicalType } from "./types.js";
+import { MAX_PATTERN_SUBJECT_LENGTH } from "./config.js";
 import { RegexEngine } from "./engines/regex.js";
 import { GlinerEngine } from "./engines/gliner.js";
 
@@ -18,7 +19,10 @@ function buildPatternMaps(value: string[] | undefined): RegExp[] {
     return [];
   }
 
-  return value.map((pattern) => new RegExp(pattern, "i"));
+  // Anchor so patterns must match the FULL entity text — a partial match
+  // must never suppress a finding (security boundary; mirrors
+  // datafog-python 4.7.0 fullmatch semantics).
+  return value.map((pattern) => new RegExp(`^(?:${pattern})$`, "i"));
 }
 
 export class Scanner {
@@ -114,7 +118,10 @@ export class Scanner {
       return true;
     }
 
-    if (this.allowlist.patterns.some((pattern) => pattern.test(entity.text))) {
+    if (
+      entity.text.length <= MAX_PATTERN_SUBJECT_LENGTH &&
+      this.allowlist.patterns.some((pattern) => pattern.test(entity.text))
+    ) {
       return true;
     }
 
