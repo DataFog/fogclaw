@@ -9,8 +9,9 @@
 import { RegexEngine } from "./engines/regex.js";
 import { redact } from "./redactor.js";
 import { extractText, replaceText } from "./extract.js";
-import { canonicalType, resolveAction } from "./types.js";
-import type { Entity, FogClawConfig } from "./types.js";
+import { resolveAction } from "./types.js";
+import { buildAllowlistMatcher } from "./allowlist.js";
+import type { FogClawConfig } from "./types.js";
 import type { RedactionMapStore } from "./backlog.js";
 
 interface Logger {
@@ -33,49 +34,6 @@ export interface ToolResultPersistContext {
 }
 
 /**
- * Build an allowlist filter from config. Replicates Scanner.filterByPolicy
- * and Scanner.shouldAllowlistEntity logic synchronously.
- */
-function buildAllowlistFilter(config: FogClawConfig): (entity: Entity) => boolean {
-  const globalValues = new Set(
-    config.allowlist.values.map((v) => v.trim().toLowerCase()),
-  );
-
-  const globalPatterns = config.allowlist.patterns
-    .filter((p) => p.length > 0)
-    .map((p) => new RegExp(p, "i"));
-
-  const entityValues = new Map<string, Set<string>>();
-  for (const [entityType, values] of Object.entries(config.allowlist.entities)) {
-    const canonical = canonicalType(entityType);
-    const set = new Set(
-      values
-        .map((v) => v.trim().toLowerCase())
-        .filter((v) => v.length > 0),
-    );
-    entityValues.set(canonical, set);
-  }
-
-  // Short-circuit: if no allowlist entries, keep everything
-  if (globalValues.size === 0 && globalPatterns.length === 0 && entityValues.size === 0) {
-    return () => true;
-  }
-
-  // Return true if entity should be KEPT (not allowlisted)
-  return (entity: Entity): boolean => {
-    const normalizedText = entity.text.trim().toLowerCase();
-
-    if (globalValues.has(normalizedText)) return false;
-    if (globalPatterns.some((pattern) => pattern.test(entity.text))) return false;
-
-    const perEntity = entityValues.get(entity.label);
-    if (perEntity && perEntity.has(normalizedText)) return false;
-
-    return true;
-  };
-}
-
-/**
  * Create a synchronous tool_result_persist hook handler.
  *
  * The returned function must NOT return a Promise — OpenClaw rejects
@@ -87,7 +45,9 @@ export function createToolResultHandler(
   logger?: Logger,
   redactionMapStore?: RedactionMapStore,
 ): (event: ToolResultPersistEvent, ctx: ToolResultPersistContext) => { message: unknown } | void {
-  const shouldKeep = buildAllowlistFilter(config);
+  const isAllowlisted = buildAllowlistMatcher(config.allowlist);
+  const shouldKeep = (entity: Parameters<typeof isAllowlisted>[0]): boolean =>
+    !isAllowlisted(entity);
 
   return (event: ToolResultPersistEvent, _ctx: ToolResultPersistContext): { message: unknown } | void => {
     const text = extractText(event.message);

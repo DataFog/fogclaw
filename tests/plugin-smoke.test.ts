@@ -47,17 +47,18 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     plugin.register(api);
 
     expect(typeof plugin.register).toBe("function");
-    expect(api.on).toHaveBeenCalledWith("before_agent_start", expect.any(Function));
+    expect(api.on).toHaveBeenCalledWith("before_prompt_build", expect.any(Function));
     expect(api.on).toHaveBeenCalledWith("tool_result_persist", expect.any(Function));
     expect(api.on).toHaveBeenCalledWith("message_sending", expect.any(Function));
+    expect(api.on).toHaveBeenCalledWith("reply_payload_sending", expect.any(Function));
     expect(api.registerTool).toHaveBeenCalledTimes(6);
 
-    const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
-    const previewTool = api.tools.find((tool: any) => tool.id === "fogclaw_preview");
-    const redactTool = api.tools.find((tool: any) => tool.id === "fogclaw_redact");
-    const requestAccessTool = api.tools.find((tool: any) => tool.id === "fogclaw_request_access");
-    const requestsTool = api.tools.find((tool: any) => tool.id === "fogclaw_requests");
-    const resolveTool = api.tools.find((tool: any) => tool.id === "fogclaw_resolve");
+    const scanTool = api.tools.find((tool: any) => tool.name === "fogclaw_scan");
+    const previewTool = api.tools.find((tool: any) => tool.name === "fogclaw_preview");
+    const redactTool = api.tools.find((tool: any) => tool.name === "fogclaw_redact");
+    const requestAccessTool = api.tools.find((tool: any) => tool.name === "fogclaw_request_access");
+    const requestsTool = api.tools.find((tool: any) => tool.name === "fogclaw_requests");
+    const resolveTool = api.tools.find((tool: any) => tool.name === "fogclaw_resolve");
 
     expect(scanTool).toBeDefined();
     expect(previewTool).toBeDefined();
@@ -70,7 +71,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(previewTool.parameters.required).toContain("text");
     expect(redactTool.parameters.required).toContain("text");
     expect(requestAccessTool.parameters.required).toContain("placeholder");
-    expect(requestsTool.parameters.required).toEqual([]);
+    expect(requestsTool.parameters.required ?? []).toEqual([]);
     expect(resolveTool.parameters.required).toContain("action");
   });
 
@@ -79,7 +80,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
 
     plugin.register(api);
 
-    const hook = api.hooks.find((entry: any) => entry.event === "before_agent_start");
+    const hook = api.hooks.find((entry: any) => entry.event === "before_prompt_build");
     expect(hook).toBeDefined();
 
     const hookResult = await hook!.handler({
@@ -90,7 +91,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(hookResult?.prependContext).toContain("[FOGCLAW REDACTED]");
     expect(hookResult?.prependContext).not.toContain("john@example.com");
 
-    const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
+    const scanTool = api.tools.find((tool: any) => tool.name === "fogclaw_scan");
     const scanOutput = await scanTool.execute("test", {
       text: "Email me at john@example.com today.",
     });
@@ -102,7 +103,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(scanParsed.count).toBe(scanParsed.entities.length);
     expect(scanParsed.entities[0].label).toBe("EMAIL");
 
-    const redactTool = api.tools.find((tool: any) => tool.id === "fogclaw_redact");
+    const redactTool = api.tools.find((tool: any) => tool.name === "fogclaw_redact");
     const redactOutput = await redactTool.execute("test", {
       text: "Email me at john@example.com today.",
       strategy: "token",
@@ -118,7 +119,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
 
     plugin.register(api);
 
-    const previewTool = api.tools.find((tool: any) => tool.id === "fogclaw_preview");
+    const previewTool = api.tools.find((tool: any) => tool.name === "fogclaw_preview");
 
     const previewOutput = await previewTool.execute("test", {
       text: "Email me at john@example.com about Acme Corp tomorrow.",
@@ -140,7 +141,7 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     const api = createApi();
 
     plugin.register(api);
-    const scanTool = api.tools.find((tool: any) => tool.id === "fogclaw_scan");
+    const scanTool = api.tools.find((tool: any) => tool.name === "fogclaw_scan");
 
     const scanOutput = await scanTool.execute("test", {
       text: "Confidential note for Acme project roadmap",
@@ -255,5 +256,63 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     }, { channelId: "slack" });
 
     expect(result).toBeUndefined();
+  });
+
+  it("reply_payload_sending hook redacts payload text", () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "reply_payload_sending");
+    expect(hook).toBeDefined();
+
+    const email = "jane.doe@" + "example.com";
+    const result = hook!.handler({
+      payload: { text: `Contact ${email} for details.` },
+      kind: "final",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.payload.text).toContain("[EMAIL_1]");
+    expect(result.payload.text).not.toContain(email);
+  });
+
+  it("reply_payload_sending hook returns void for clean or empty payloads", () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "reply_payload_sending");
+
+    expect(hook!.handler({ payload: { text: "All clear." }, kind: "final" })).toBeUndefined();
+    expect(hook!.handler({ payload: { mediaUrl: "https://example.com/x.png" }, kind: "final" })).toBeUndefined();
+  });
+
+  it("does not register before_agent_run gate in redact mode", () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "before_agent_run");
+    expect(hook).toBeUndefined();
+  });
+
+  it("before_agent_run gate blocks runs containing blocked entities", async () => {
+    const api = createApi();
+    api.pluginConfig = {
+      ...api.pluginConfig,
+      guardrail_mode: "block",
+    };
+    plugin.register(api);
+
+    const hook = api.hooks.find((entry: any) => entry.event === "before_agent_run");
+    expect(hook).toBeDefined();
+
+    const ssn = "123-45" + "-6789";
+    const blocked = await hook!.handler({ prompt: `My SSN is ${ssn}.`, messages: [] });
+    expect(blocked.outcome).toBe("block");
+    expect(blocked.reason).toContain("SSN");
+    expect(blocked.reason).not.toContain(ssn);
+    expect(blocked.message).not.toContain(ssn);
+
+    const passed = await hook!.handler({ prompt: "Hello there.", messages: [] });
+    expect(passed.outcome).toBe("pass");
   });
 });

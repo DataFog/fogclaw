@@ -1,3 +1,15 @@
+import { Type } from "typebox";
+import {
+  definePluginEntry,
+  type OpenClawPluginApi,
+  type OpenClawPluginDefinition,
+} from "openclaw/plugin-sdk/plugin-entry";
+import type {
+  PluginHookToolResultPersistEvent,
+  PluginHookToolResultPersistContext,
+  PluginHookToolResultPersistResult,
+} from "openclaw/plugin-sdk/types";
+
 import { Scanner } from "./scanner.js";
 import { redact } from "./redactor.js";
 import { loadConfig } from "./config.js";
@@ -108,17 +120,23 @@ function buildGuardrailContext(plan: ReturnType<typeof buildGuardrailPlan>, conf
  * OpenClaw plugin definition.
  *
  * Registers:
- * - `before_agent_start` hook for automatic PII guardrail
+ * - `before_prompt_build` hook for automatic PII guardrail (redact/warn, plus
+ *   block-instruction fallback when the run gate is unavailable)
+ * - `before_agent_run` gate for hard blocking, when block actions are
+ *   configured (requires `hooks.allowConversationAccess: true`)
+ * - `tool_result_persist` / `message_sending` / `reply_payload_sending`
+ *   hooks for tool-result and outbound redaction
  * - `fogclaw_scan` tool for on-demand entity detection
  * - `fogclaw_preview` tool for dry-run policy simulation
  * - `fogclaw_redact` tool for on-demand redaction
  */
-const fogclaw = {
+const fogclaw: OpenClawPluginDefinition = definePluginEntry({
   id: "fogclaw",
   name: "FogClaw",
+  description: "PII detection & custom entity redaction plugin powered by DataFog",
 
-  register(api: any) {
-    const rawConfig = api.pluginConfig ?? api.getConfig?.() ?? {};
+  register(api: OpenClawPluginApi) {
+    const rawConfig = api.pluginConfig ?? {};
     const config = loadConfig(rawConfig);
 
     if (!config.enabled) {
@@ -137,8 +155,51 @@ const fogclaw = {
     const redactionMapStore = new RedactionMapStore();
     const backlogStore = new BacklogStore(redactionMapStore, config.maxPendingRequests);
 
+    // --- HOOK: Hard block gate (only when block actions are configured) ---
+    // before_agent_run can stop the run outright, unlike the prompt-level
+    // block instruction. It is a conversation-access hook: users must set
+    // plugins.entries.fogclaw.hooks.allowConversationAccess: true. If
+    // registration is rejected, the before_prompt_build block instruction
+    // below still applies as a soft fallback.
+    const blockConfigured =
+      config.guardrail_mode === "block" ||
+      Object.values(config.entityActions).includes("block");
+    if (blockConfigured) {
+      try {
+        api.on("before_agent_run", async (event) => {
+          const message = event.prompt ?? "";
+          if (!message) return { outcome: "pass" };
+
+          const result: ScanResult = await scanner.scan(message);
+          const plan = buildGuardrailPlan(result.entities, config);
+          if (plan.blocked.length === 0) return { outcome: "pass" };
+
+          const labels = [...new Set(plan.blocked.map((entity) => entity.label))];
+          if (config.auditEnabled) {
+            api.logger?.info(
+              `[FOGCLAW AUDIT] run_blocked ${JSON.stringify({
+                blocked: plan.blocked.length,
+                blockedLabels: labels,
+              })}`,
+            );
+          }
+
+          return {
+            outcome: "block",
+            reason: `blocked entity types detected: ${labels.join(", ")}`,
+            message: `Message blocked: it contains sensitive information (${labels.join(", ")}). Rephrase without sensitive data.`,
+            category: "pii",
+          };
+        });
+      } catch (err) {
+        api.logger?.warn(
+          `[fogclaw] before_agent_run gate unavailable (set plugins.entries.fogclaw.hooks.allowConversationAccess: true for hard blocking); falling back to prompt-level block instruction: ${String(err)}`,
+        );
+      }
+    }
+
     // --- HOOK: Guardrail on incoming messages ---
-    api.on("before_agent_start", async (event: any) => {
+    api.on("before_prompt_build", async (event) => {
       const message = event.prompt ?? "";
       if (!message) return;
 
@@ -183,42 +244,72 @@ const fogclaw = {
     // --- HOOK: Scan tool results for PII before persistence ---
     const toolResultRegex = new RegexEngine();
     const toolResultHandler = createToolResultHandler(config, toolResultRegex, api.logger, redactionMapStore);
-    api.on("tool_result_persist", toolResultHandler);
+    api.on(
+      "tool_result_persist",
+      (
+        event: PluginHookToolResultPersistEvent,
+        ctx: PluginHookToolResultPersistContext,
+      ): PluginHookToolResultPersistResult | void => {
+        const result = toolResultHandler(event, ctx);
+        if (!result) return;
+        // replaceText preserves the incoming message shape, so this cast is
+        // faithful to what the hook received.
+        return { message: result.message as PluginHookToolResultPersistEvent["message"] };
+      },
+    );
 
     // --- HOOK: Scan outbound messages for PII before delivery ---
     const messageSendingHandler = createMessageSendingHandler(config, scanner, api.logger, redactionMapStore);
     api.on("message_sending", messageSendingHandler);
 
+    // --- HOOK: Scan normalized reply payloads (media captions and payload
+    // text do not always flow through message_sending) ---
+    api.on("reply_payload_sending", (event) => {
+      const text = event.payload?.text;
+      if (!text) return;
+
+      const result = scanner.scanRegexOnly(text);
+      if (result.entities.length === 0) return;
+
+      const redacted: RedactResult = redact(text, result.entities, config.redactStrategy);
+      redactionMapStore.addMapping(redacted.mapping);
+
+      if (config.auditEnabled) {
+        api.logger?.info(
+          `[FOGCLAW AUDIT] reply_payload_redacted ${JSON.stringify({
+            entities: result.entities.length,
+            labels: [...new Set(result.entities.map((entity) => entity.label))],
+          })}`,
+        );
+      }
+
+      return { payload: { ...event.payload, text: redacted.redacted_text } };
+    });
+
     // --- TOOL: On-demand scan ---
     api.registerTool(
       {
         name: "fogclaw_scan",
-        id: "fogclaw_scan",
+        label: "FogClaw Scan",
         description:
           "Scan text for PII and custom entities. Returns detected entities with types, positions, and confidence scores.",
-        parameters: {
-          type: "object",
-          properties: {
-            text: {
-              type: "string",
-              description: "Text to scan for entities",
-            },
-            custom_labels: {
-              type: "array",
-              items: { type: "string" },
+        parameters: Type.Object({
+          text: Type.String({ description: "Text to scan for entities" }),
+          custom_labels: Type.Optional(
+            Type.Array(Type.String(), {
               description:
                 "Additional entity labels for zero-shot detection (e.g., ['competitor name', 'project codename'])",
-            },
-          },
-          required: ["text"],
-        },
-        execute: async (
-          _toolCallId: string,
-          params: { text: string; custom_labels?: string[] },
-        ) => {
-          const { text, custom_labels } = params;
+            }),
+          ),
+        }),
+        execute: async (_toolCallId: string, params: unknown) => {
+          const { text, custom_labels } = params as {
+            text: string;
+            custom_labels?: string[];
+          };
           const result = await scanner.scan(text, custom_labels);
           return {
+            details: undefined,
             content: [
               {
                 type: "text",
@@ -245,39 +336,32 @@ const fogclaw = {
     api.registerTool(
       {
         name: "fogclaw_preview",
-        id: "fogclaw_preview",
+        label: "FogClaw Preview",
         description:
           "Preview which entities will be blocked, warned, or redacted and the redacted message, without changing runtime behavior.",
-        parameters: {
-          type: "object",
-          properties: {
-            text: {
-              type: "string",
-              description: "Text to run through FogClaw policy preview",
-            },
-            strategy: {
-              type: "string",
-              description:
-                'Override redaction strategy for the preview: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...]).',
-              enum: ["token", "mask", "hash"],
-            },
-            custom_labels: {
-              type: "array",
-              items: { type: "string" },
+        parameters: Type.Object({
+          text: Type.String({ description: "Text to run through FogClaw policy preview" }),
+          strategy: Type.Optional(
+            Type.Union(
+              [Type.Literal("token"), Type.Literal("mask"), Type.Literal("hash")],
+              {
+                description:
+                  'Override redaction strategy for the preview: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...]).',
+              },
+            ),
+          ),
+          custom_labels: Type.Optional(
+            Type.Array(Type.String(), {
               description: "Additional entity labels for zero-shot detection",
-            },
-          },
-          required: ["text"],
-        },
-        execute: async (
-          _toolCallId: string,
-          params: {
+            }),
+          ),
+        }),
+        execute: async (_toolCallId: string, params: unknown) => {
+          const { text, strategy, custom_labels } = params as {
             text: string;
             strategy?: "token" | "mask" | "hash";
             custom_labels?: string[];
-          },
-        ) => {
-          const { text, strategy, custom_labels } = params;
+          };
           const result = await scanner.scan(text, custom_labels);
           const plan = buildGuardrailPlan(result.entities, config);
           const summary = planToSummary(plan);
@@ -288,6 +372,7 @@ const fogclaw = {
           );
 
           return {
+            details: undefined,
             content: [
               {
                 type: "text",
@@ -327,39 +412,32 @@ const fogclaw = {
     api.registerTool(
       {
         name: "fogclaw_redact",
-        id: "fogclaw_redact",
+        label: "FogClaw Redact",
         description:
           "Scan and redact PII/custom entities from text. Returns sanitized text with entities replaced.",
-        parameters: {
-          type: "object",
-          properties: {
-            text: {
-              type: "string",
-              description: "Text to scan and redact",
-            },
-            strategy: {
-              type: "string",
-              description:
-                'Redaction strategy: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...])',
-              enum: ["token", "mask", "hash"],
-            },
-            custom_labels: {
-              type: "array",
-              items: { type: "string" },
+        parameters: Type.Object({
+          text: Type.String({ description: "Text to scan and redact" }),
+          strategy: Type.Optional(
+            Type.Union(
+              [Type.Literal("token"), Type.Literal("mask"), Type.Literal("hash")],
+              {
+                description:
+                  'Redaction strategy: "token" ([EMAIL_1]), "mask" (****), or "hash" ([EMAIL_a1b2c3...])',
+              },
+            ),
+          ),
+          custom_labels: Type.Optional(
+            Type.Array(Type.String(), {
               description: "Additional entity labels for zero-shot detection",
-            },
-          },
-          required: ["text"],
-        },
-        execute: async (
-          _toolCallId: string,
-          params: {
+            }),
+          ),
+        }),
+        execute: async (_toolCallId: string, params: unknown) => {
+          const { text, strategy, custom_labels } = params as {
             text: string;
             strategy?: "token" | "mask" | "hash";
             custom_labels?: string[];
-          },
-        ) => {
-          const { text, strategy, custom_labels } = params;
+          };
           const result = await scanner.scan(text, custom_labels);
           const redacted = redact(
             text,
@@ -367,6 +445,7 @@ const fogclaw = {
             strategy ?? config.redactStrategy,
           );
           return {
+            details: undefined,
             content: [
               {
                 type: "text",
@@ -387,100 +466,116 @@ const fogclaw = {
     );
 
     // --- TOOL: Request access to redacted data ---
+    const requestAccessHandler = createRequestAccessHandler(backlogStore, config, api.logger);
     api.registerTool({
       name: "fogclaw_request_access",
-      id: "fogclaw_request_access",
+      label: "FogClaw Request Access",
       description:
         "Request access to redacted PII data. Use when you encounter a redacted placeholder (like [EMAIL_1]) and need the original text to complete a task. A user must review and approve the request.",
-      parameters: {
-        type: "object",
-        properties: {
-          placeholder: {
-            type: "string",
-            description:
-              'The redacted placeholder token (e.g., "[EMAIL_1]", "[SSN_1]")',
+      parameters: Type.Object({
+        placeholder: Type.String({
+          description: 'The redacted placeholder token (e.g., "[EMAIL_1]", "[SSN_1]")',
+        }),
+        entity_type: Type.String({
+          description: 'The type of entity (e.g., "EMAIL", "SSN", "PERSON")',
+        }),
+        reason: Type.String({ description: "Why you need access to this data" }),
+        context: Type.Optional(
+          Type.String({
+            description: "Surrounding text or context where the placeholder appears (optional)",
+          }),
+        ),
+      }),
+      execute: async (toolCallId, params) => ({
+        details: undefined,
+        ...requestAccessHandler(
+          toolCallId,
+          params as {
+            placeholder: string;
+            entity_type: string;
+            reason: string;
+            context?: string;
           },
-          entity_type: {
-            type: "string",
-            description:
-              'The type of entity (e.g., "EMAIL", "SSN", "PERSON")',
-          },
-          reason: {
-            type: "string",
-            description: "Why you need access to this data",
-          },
-          context: {
-            type: "string",
-            description:
-              "Surrounding text or context where the placeholder appears (optional)",
-          },
-        },
-        required: ["placeholder", "entity_type", "reason"],
-      },
-      execute: createRequestAccessHandler(backlogStore, config, api.logger),
+        ),
+      }),
     });
 
     // --- TOOL: List access requests ---
+    const requestsListHandler = createRequestsListHandler(backlogStore, config, api.logger);
     api.registerTool({
       name: "fogclaw_requests",
-      id: "fogclaw_requests",
+      label: "FogClaw Requests",
       description:
         "List PII access requests. Use to review pending requests or check for approved/denied responses. Filter by status: pending, approved, denied, follow_up.",
-      parameters: {
-        type: "object",
-        properties: {
-          status: {
-            type: "string",
-            description:
-              'Filter by request status. One of: "pending", "approved", "denied", "follow_up". Omit to list all.',
-            enum: ["pending", "approved", "denied", "follow_up"],
-          },
-        },
-        required: [],
-      },
-      execute: createRequestsListHandler(backlogStore, config, api.logger),
+      parameters: Type.Object({
+        status: Type.Optional(
+          Type.Union(
+            [
+              Type.Literal("pending"),
+              Type.Literal("approved"),
+              Type.Literal("denied"),
+              Type.Literal("follow_up"),
+            ],
+            {
+              description:
+                'Filter by request status. One of: "pending", "approved", "denied", "follow_up". Omit to list all.',
+            },
+          ),
+        ),
+      }),
+      execute: async (toolCallId, params) => ({
+        details: undefined,
+        ...requestsListHandler(toolCallId, params as { status?: string }),
+      }),
     });
 
     // --- TOOL: Resolve access request ---
+    const resolveHandler = createResolveHandler(backlogStore, config, api.logger);
     api.registerTool({
       name: "fogclaw_resolve",
-      id: "fogclaw_resolve",
+      label: "FogClaw Resolve",
       description:
         'Resolve a PII access request. Approve to reveal the original text, deny to reject, or follow_up to ask the agent for more context. Use request_id for single or request_ids for batch.',
-      parameters: {
-        type: "object",
-        properties: {
-          request_id: {
-            type: "string",
-            description: 'The ID of the request to resolve (e.g., "REQ-1")',
-          },
-          request_ids: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "Multiple request IDs to resolve with the same action (batch mode)",
-          },
-          action: {
-            type: "string",
+      parameters: Type.Object({
+        request_id: Type.Optional(
+          Type.String({ description: 'The ID of the request to resolve (e.g., "REQ-1")' }),
+        ),
+        request_ids: Type.Optional(
+          Type.Array(Type.String(), {
+            description: "Multiple request IDs to resolve with the same action (batch mode)",
+          }),
+        ),
+        action: Type.Union(
+          [Type.Literal("approve"), Type.Literal("deny"), Type.Literal("follow_up")],
+          {
             description:
               'Action to take: "approve" (reveal original text), "deny" (reject), or "follow_up" (ask agent for more context)',
-            enum: ["approve", "deny", "follow_up"],
           },
-          message: {
-            type: "string",
-            description:
-              "Optional message: reason for denial, or follow-up question for the agent",
+        ),
+        message: Type.Optional(
+          Type.String({
+            description: "Optional message: reason for denial, or follow-up question for the agent",
+          }),
+        ),
+      }),
+      execute: async (toolCallId, params) => ({
+        details: undefined,
+        ...resolveHandler(
+          toolCallId,
+          params as {
+            request_id?: string;
+            request_ids?: string[];
+            action: string;
+            message?: string;
           },
-        },
-        required: ["action"],
-      },
-      execute: createResolveHandler(backlogStore, config, api.logger),
+        ),
+      }),
     });
 
     api.logger?.info(
       `[fogclaw] Plugin registered — guardrail: ${config.guardrail_mode}, model: ${config.model}, custom entities: ${config.custom_entities.length}, audit: ${config.auditEnabled}`,
     );
   },
-};
+});
 
 export default fogclaw;
