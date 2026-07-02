@@ -17,9 +17,11 @@ src/types.ts          All shared type definitions.
 
 | Hook | Engine | Sync/Async | Surface |
 |---|---|---|---|
-| `before_agent_start` | Scanner (regex+GLiNER) | async | User prompts |
+| `before_agent_run` (block mode only) | Scanner (regex+GLiNER) | async | Run gate — stops runs containing blocked entities; requires `hooks.allowConversationAccess` |
+| `before_prompt_build` | Scanner (regex+GLiNER) | async | User prompts |
 | `tool_result_persist` | RegexEngine only | sync | Tool results |
-| `message_sending` | Scanner (regex+GLiNER) | async | Outbound messages |
+| `message_sending` | Scanner regex path | async | Outbound messages |
+| `reply_payload_sending` | Scanner regex path | sync | Normalized reply payloads (incl. media captions) |
 
 ## Tools
 

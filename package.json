@@ -22,10 +22,12 @@
     "gliner": "^0.0.19",
     "onnxruntime-node": "1.19.2",
     "onnxruntime-web": "1.21.0",
-    "sharp": "0.35.3"
+    "sharp": "0.35.3",
+    "typebox": "^1.1.39"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "openclaw": "^2026.6.11",
     "typescript": "^5.7.0",
     "vitest": "^4.1.9"
   },

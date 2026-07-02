@@ -144,11 +144,11 @@ describe("createToolResultHandler", () => {
     expect(result).toBeUndefined();
   });
 
-  it("respects allowlist — global patterns", () => {
+  it("respects allowlist — global patterns (full match)", () => {
     const config = makeConfig({
       allowlist: {
         values: [],
-        patterns: ["^internal-"],
+        patterns: ["^internal-.*"],
         entities: {},
       },
     });
@@ -158,6 +158,40 @@ describe("createToolResultHandler", () => {
       {},
     );
     expect(result).toBeUndefined();
+  });
+
+  it("does not let a partial pattern match suppress a finding", () => {
+    const config = makeConfig({
+      allowlist: {
+        values: [],
+        // Matches a substring of the detected email, not the full entity
+        // text — must never suppress the finding.
+        patterns: ["example"],
+        entities: {},
+      },
+    });
+    const handler = createToolResultHandler(config, regexEngine);
+    const result = handler(
+      { message: "Contact " + "test@example" + ".com for help" },
+      {},
+    );
+    expect(result).toBeDefined();
+    expect(result?.message).toContain("[EMAIL_1]");
+  });
+
+  it("skips pattern matching for entities longer than 512 chars (fail-safe)", () => {
+    const config = makeConfig({
+      allowlist: {
+        values: [],
+        patterns: [".*"],
+        entities: {},
+      },
+    });
+    const handler = createToolResultHandler(config, regexEngine);
+    const longEmail = "a".repeat(520) + "@example" + ".com";
+    const result = handler({ message: `Contact ${longEmail} now` }, {});
+    expect(result).toBeDefined();
+    expect(result?.message).toContain("[EMAIL_1]");
   });
 
   it("respects allowlist — per-entity values", () => {
