@@ -7,7 +7,7 @@ FogClaw uses a dual-engine approach: battle-tested regex patterns for structured
 ## Features
 
 - **Three-layer scanning** — inbound prompts, tool results, and outbound messages are all scanned for PII before they cross trust boundaries
-- **Automatic guardrail** — intercepts messages before they reach the LLM via OpenClaw's `before_agent_start` hook
+- **Automatic guardrail** — intercepts messages before they reach the LLM via OpenClaw's `before_prompt_build` hook; with block actions configured, the `before_agent_run` gate stops the run outright (requires `plugins.entries.fogclaw.hooks.allowConversationAccess: true`)
 - **Tool result scanning** — redacts PII in file reads, API responses, and web fetches before they enter the session transcript (`tool_result_persist`)
 - **Outbound message scanning** — last-chance gate that catches PII in agent replies before delivery to external channels (`message_sending`)
 - **On-demand tools** — `fogclaw_scan`, `fogclaw_preview`, and `fogclaw_redact`
@@ -146,18 +146,23 @@ Incoming message
 
 ## Scanning Architecture
 
-FogClaw hooks into three points in the OpenClaw message lifecycle. Each hook uses the detection engine best suited to its runtime constraints:
+FogClaw hooks into the OpenClaw message lifecycle at every point where sensitive data can enter or leave. Each hook uses the detection engine best suited to its runtime constraints:
 
-| Hook | Direction | Engine | Latency | Async | Entity Coverage |
-|------|-----------|--------|---------|-------|-----------------|
-| `before_agent_start` | Inbound (user prompt) | Regex + GLiNER | ~50-200ms | Yes | Full — structured PII + names, orgs, custom entities |
-| `tool_result_persist` | Internal (tool results) | Regex only | <1ms | No (sync) | Structured PII — emails, SSNs, phones, credit cards, IPs |
-| `message_sending` | Outbound (agent reply) | Regex + GLiNER | ~50-200ms | Yes | Full — structured PII + names, orgs, custom entities |
+| Hook | Direction | Engine | Latency | Entity Coverage |
+|------|-----------|--------|---------|-----------------|
+| `before_agent_run` (block mode only) | Inbound gate | Regex + GLiNER | ~50-200ms | Full; stops the run when blocked entities are found. Requires `hooks.allowConversationAccess: true` |
+| `before_prompt_build` | Inbound (user prompt) | Regex + GLiNER | ~50-200ms | Full — structured PII + names, orgs, custom entities |
+| `tool_result_persist` | Internal (tool results) | Regex only | <1ms | Structured PII — emails, SSNs, phones, credit cards, IPs, secrets, tokens |
+| `message_sending` | Outbound (agent reply) | Regex only | <1ms | Structured PII + secrets/tokens |
+| `reply_payload_sending` | Outbound (normalized payload, incl. media captions) | Regex only | <1ms | Structured PII + secrets/tokens |
 
-**Why regex-only for tool results?** OpenClaw's `tool_result_persist` hook requires synchronous handlers — async returns are rejected. GLiNER inference runs a synchronous ONNX native call that blocks the event loop for 100-500ms per invocation, which would degrade gateway responsiveness (delayed heartbeats, WebSocket pings, HTTP responses). Regex covers the high-confidence structured patterns most common in tool output (credentials in file reads, contact info in API responses). Person names and organization names are caught on the async inbound and outbound paths, providing defense-in-depth without hot-path latency.
+**Why regex-only on the hot paths?** `tool_result_persist` requires synchronous handlers, and the outbound hooks sit on the delivery path where GLiNER's 100-500ms ONNX inference would delay every reply. Regex covers the high-confidence structured patterns most common in tool output and replies (credentials in file reads, contact info in API responses). Person names, organizations, and custom entities are caught on the async inbound path, providing defense-in-depth without hot-path latency.
 
 ```
-User prompt ──► before_agent_start (regex + GLiNER)
+User prompt ──► before_agent_run (block gate, when configured)
+                        │
+                        ▼
+                before_prompt_build (regex + GLiNER)
                         │
                         ▼
                    Agent + LLM
@@ -173,7 +178,8 @@ User prompt ──► before_agent_start (regex + GLiNER)
                    Agent reply
                         │
                         ▼
-              message_sending (regex + GLiNER)
+              message_sending ──► reply_payload_sending
+                  (regex only)        (regex only)
                         │
                         ▼
                   External channel

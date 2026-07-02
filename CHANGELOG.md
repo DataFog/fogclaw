@@ -18,11 +18,19 @@
 - **Allowlist hardening** (ported from datafog-python 4.7.0) — patterns must match the full entity text, so a partial match never suppresses a finding; quantified groups containing nested quantifiers (e.g. `(a+)+`) are rejected at config time to prevent catastrophic backtracking on attacker-influenced entity text; patterns are capped at 512 chars; entities longer than 512 chars skip pattern matching fail-safe (the finding is kept).
 - **Dependency vulnerabilities cleared** — `npm audit` reported 10 vulnerabilities (2 critical); now 0. protobufjs/rollup/tar transitives fixed, vitest 2→4, sharp 0.34.5→0.35.3.
 
+### Changed (OpenClaw 2026.6.11 compatibility)
+
+- **Typed against the real plugin SDK** — `openclaw` 2026.6.11 is now a devDependency; the entry point uses `definePluginEntry` with `OpenClawPluginApi`, and tool schemas are TypeBox objects (`typebox` pinned to OpenClaw's vendored 1.1.39). Verified: the plugin loads, registers, and attaches all hooks in a live isolated-profile `openclaw plugins list` / `doctor` run.
+- **Inbound guardrail migrated** from deprecated `before_agent_start` to `before_prompt_build`.
+- **Hard blocking via `before_agent_run`** — when block actions are configured, FogClaw now stops the run outright instead of only injecting a block instruction. Requires `plugins.entries.fogclaw.hooks.allowConversationAccess: true`; falls back to the prompt-level instruction when unavailable.
+- **`reply_payload_sending` hook added** — media captions and normalized payload text do not always flow through `message_sending`; this closes that outbound gap.
+- **Shared allowlist matcher** (`src/allowlist.ts`) — the tool-result path had a duplicate of the pre-hardening allowlist logic, so partial pattern matches could still suppress findings there. Both paths now share fullmatch anchoring and the 512-char fail-safe subject cap. Allowlist patterns now anchor on the tool-result path too: a prefix pattern like `^internal-` must become `^internal-.*`.
+
 ### Known follow-ups
 
-- `before_agent_start` is deprecated upstream (compatibility-only): migrate the inbound guardrail to `before_prompt_build`, and consider `before_agent_run` for hard blocks (requires users to set `hooks.allowConversationAccess`).
-- Consider registering `reply_payload_sending` for outbound coverage of media captions and normalized payloads.
+- Live end-to-end agent turn (gateway + real provider) exercising all four hook layers; rebuild the E2E baseline from closed PR #3 against the current runtime.
 - onnxruntime pins unchanged: gliner 0.0.19 (latest) expects onnxruntime 1.19.x internals; revisit when gliner updates.
+- `fogclaw_redact` returns the placeholder→original mapping in model-visible tool output, which partially defeats redaction for that on-demand path; consider gating mapping exposure behind the access-request backlog.
 
 ## 0.3.0
 
