@@ -258,6 +258,64 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     expect(result).toBeUndefined();
   });
 
+  it("fogclaw_redact does not expose the redaction mapping in tool output", async () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const email = "jane.doe@" + "example.com";
+    const redactTool = api.tools.find((tool: any) => tool.name === "fogclaw_redact");
+    const output = await redactTool.execute("test", {
+      text: `Email me at ${email} today.`,
+      strategy: "token",
+    });
+
+    const raw = output.content[0].text;
+    const parsed = JSON.parse(raw);
+    expect(parsed.redacted_text).toContain("[EMAIL_1]");
+    expect(parsed.mapping).toBeUndefined();
+    expect(raw).not.toContain(email);
+    expect(parsed.placeholders).toEqual(["[EMAIL_1]"]);
+  });
+
+  it("fogclaw_redact feeds the access-request backlog for controlled reveals", async () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const email = "jane.doe@" + "example.com";
+    const redactTool = api.tools.find((tool: any) => tool.name === "fogclaw_redact");
+    await redactTool.execute("test", { text: `Email me at ${email} today.` });
+
+    const requestTool = api.tools.find((tool: any) => tool.name === "fogclaw_request_access");
+    const requestOutput = await requestTool.execute("test", {
+      placeholder: "[EMAIL_1]",
+      entity_type: "EMAIL",
+      reason: "need to send a reply",
+    });
+    const requestParsed = JSON.parse(requestOutput.content[0].text);
+    expect(requestParsed.request_id).toBeDefined();
+
+    const resolveTool = api.tools.find((tool: any) => tool.name === "fogclaw_resolve");
+    const resolveOutput = await resolveTool.execute("test", {
+      request_id: requestParsed.request_id,
+      action: "approve",
+    });
+    const resolveParsed = JSON.parse(resolveOutput.content[0].text);
+    expect(resolveParsed.original_text).toBe(email);
+  });
+
+  it("fogclaw_preview does not expose the redaction mapping", async () => {
+    const api = createApi();
+    plugin.register(api);
+
+    const email = "jane.doe@" + "example.com";
+    const previewTool = api.tools.find((tool: any) => tool.name === "fogclaw_preview");
+    const output = await previewTool.execute("test", { text: `Reach me at ${email}.` });
+
+    const parsed = JSON.parse(output.content[0].text);
+    expect(parsed.mapping).toBeUndefined();
+    expect(parsed.redactedText).toContain("[EMAIL_1]");
+  });
+
   it("reply_payload_sending hook redacts payload text", () => {
     const api = createApi();
     plugin.register(api);
