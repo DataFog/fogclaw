@@ -26,11 +26,15 @@
 - **`reply_payload_sending` hook added** — media captions and normalized payload text do not always flow through `message_sending`; this closes that outbound gap.
 - **Shared allowlist matcher** (`src/allowlist.ts`) — the tool-result path had a duplicate of the pre-hardening allowlist logic, so partial pattern matches could still suppress findings there. Both paths now share fullmatch anchoring and the 512-char fail-safe subject cap. Allowlist patterns now anchor on the tool-result path too: a prefix pattern like `^internal-` must become `^internal-.*`.
 
+### Security (continued)
+
+- **`fogclaw_redact` and `fogclaw_preview` no longer return the placeholder→original mapping** in model-visible tool output — returning it partially defeated redaction (the mapping persisted in the session transcript). `fogclaw_redact` now feeds the mapping into `RedactionMapStore` and returns the placeholder list; originals are recoverable only through the access-request backlog (`fogclaw_request_access` → user approval via `fogclaw_resolve`).
+
 ### Known follow-ups
 
 - Live end-to-end agent turn (gateway + real provider) exercising all four hook layers; rebuild the E2E baseline from closed PR #3 against the current runtime.
 - onnxruntime pins unchanged: gliner 0.0.19 (latest) expects onnxruntime 1.19.x internals; revisit when gliner updates.
-- `fogclaw_redact` returns the placeholder→original mapping in model-visible tool output, which partially defeats redaction for that on-demand path; consider gating mapping exposure behind the access-request backlog.
+- `fogclaw_scan`/`fogclaw_preview` still return detected entity spans (including matched text) for caller-supplied input; unlike the mapping this reveals nothing the caller did not already have, but consider a count-only output mode for transcript hygiene.
 
 ## 0.3.0
 

@@ -36,7 +36,7 @@ src/types.ts          All shared type definitions.
 
 ## Data Flow
 
-Hooks intercept text, scan for PII, redact, and capture placeholder-to-original mappings in `RedactionMapStore`. When an agent needs redacted data, it submits a request to `BacklogStore` via `fogclaw_request_access`. Users review and resolve via `fogclaw_resolve`. Original text is only revealed on explicit approval.
+Hooks and the `fogclaw_redact` tool intercept text, scan for PII, redact, and capture placeholder-to-original mappings in `RedactionMapStore`. Mappings are never included in model-visible output. When an agent needs redacted data, it submits a request to `BacklogStore` via `fogclaw_request_access`. Users review and resolve via `fogclaw_resolve`. Original text is only revealed on explicit approval.
 
 ## Key Invariants
 
