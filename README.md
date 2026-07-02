@@ -7,7 +7,7 @@ FogClaw uses a dual-engine approach: battle-tested regex patterns for structured
 ## Features
 
 - **Three-layer scanning** — inbound prompts, tool results, and outbound messages are all scanned for PII before they cross trust boundaries
-- **Automatic guardrail** — intercepts messages before they reach the LLM via OpenClaw's `before_prompt_build` hook; with block actions configured, the `before_agent_run` gate stops the run outright (requires `plugins.entries.fogclaw.hooks.allowConversationAccess: true`)
+- **Automatic guardrail** — flags sensitive data in inbound prompts (`before_prompt_build`) and instructs the agent to work with placeholders. The OpenClaw plugin API cannot rewrite inbound prompts, so this layer is advisory; for hard inbound enforcement, configure block actions and the `before_agent_run` gate stops the run before the model sees the message (requires `plugins.entries.fogclaw.hooks.allowConversationAccess: true`)
 - **Tool result scanning** — redacts PII in file reads, API responses, and web fetches before they enter the session transcript (`tool_result_persist`)
 - **Outbound message scanning** — last-chance gate that catches PII in agent replies before delivery to external channels (`message_sending`)
 - **On-demand tools** — `fogclaw_scan`, `fogclaw_preview`, and `fogclaw_redact`
@@ -151,7 +151,7 @@ FogClaw hooks into the OpenClaw message lifecycle at every point where sensitive
 | Hook | Direction | Engine | Latency | Entity Coverage |
 |------|-----------|--------|---------|-----------------|
 | `before_agent_run` (block mode only) | Inbound gate | Regex + GLiNER | ~50-200ms | Full; stops the run when blocked entities are found. Requires `hooks.allowConversationAccess: true` |
-| `before_prompt_build` | Inbound (user prompt) | Regex + GLiNER | ~50-200ms | Full — structured PII + names, orgs, custom entities |
+| `before_prompt_build` | Inbound (user prompt) | Regex + GLiNER | ~50-200ms | Full detection; **advisory** — prepends guidance and a placeholder reference, but the plugin API cannot remove the original prompt |
 | `tool_result_persist` | Internal (tool results) | Regex only | <1ms | Structured PII — emails, SSNs, phones, credit cards, IPs, secrets, tokens |
 | `message_sending` | Outbound (agent reply) | Regex only | <1ms | Structured PII + secrets/tokens |
 | `reply_payload_sending` | Outbound (normalized payload, incl. media captions) | Regex only | <1ms | Structured PII + secrets/tokens |

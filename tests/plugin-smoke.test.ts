@@ -88,7 +88,8 @@ describe("FogClaw OpenClaw plugin contract (integration path)", () => {
     });
 
     expect(hookResult).toBeDefined();
-    expect(hookResult?.prependContext).toContain("[FOGCLAW REDACTED]");
+    expect(hookResult?.prependContext).toContain("[FOGCLAW NOTICE]");
+    expect(hookResult?.prependContext).toContain("[EMAIL_1]");
     expect(hookResult?.prependContext).not.toContain("john@example.com");
 
     const scanTool = api.tools.find((tool: any) => tool.name === "fogclaw_scan");
