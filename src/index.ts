@@ -109,7 +109,10 @@ function buildGuardrailContext(plan: ReturnType<typeof buildGuardrailPlan>, conf
   if (plan.redacted.length > 0) {
     const labels = [...new Set(plan.redacted.map((entity) => entity.label))].join(", ");
     contextParts.push(
-      `[FOGCLAW REDACTED] ${plan.redacted.length} entity(ies) prepared for ${config.redactStrategy} redaction (${labels}).`,
+      `[FOGCLAW NOTICE] The user's message contains sensitive data (${labels}). ` +
+        `Do not repeat these values in replies, tool calls, or outbound messages — ` +
+        `refer to them by placeholder instead. FogClaw enforces redaction on tool ` +
+        `results and outbound delivery.`,
     );
   }
 
@@ -231,8 +234,13 @@ const fogclaw: OpenClawPluginDefinition = definePluginEntry({
           config.redactStrategy,
         );
         redactionMapStore.addMapping(redactedResult.mapping);
+        // The plugin API cannot rewrite the inbound prompt (prependContext
+        // only adds to it), so the original text still reaches the model.
+        // Give it the placeholder reference to use instead of claiming the
+        // message was redacted; enforcement happens on the tool-result and
+        // outbound paths, and via the before_agent_run gate in block mode.
         contextParts.push(
-          `[FOGCLAW REDACTED] The following is the user's message with PII redacted:\n${redactedResult.redacted_text}`,
+          `[FOGCLAW] Placeholder reference for the sensitive values (use these instead of the originals):\n${redactedResult.redacted_text}`,
         );
       }
 

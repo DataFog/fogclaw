@@ -30,6 +30,11 @@
 
 - **`fogclaw_redact` and `fogclaw_preview` no longer return the placeholder→original mapping** in model-visible tool output — returning it partially defeated redaction (the mapping persisted in the session transcript). `fogclaw_redact` now feeds the mapping into `RedactionMapStore` and returns the placeholder list; originals are recoverable only through the access-request backlog (`fogclaw_request_access` → user approval via `fogclaw_resolve`).
 
+### Changed (live E2E findings)
+
+- **Inbound guardrail messaging made honest.** A live agent-turn E2E (openclaw 2026.6.11, real Anthropic call) showed the model receives BOTH the prepended "redacted message" and the original prompt — `prependContext` cannot remove the original, and the plugin API has no prompt-rewrite hook (verified against every hook signature). The old wording ("The following is the user's message with PII redacted") was misleading and visibly confused the model. Inbound context now says what is true: it flags entity types, instructs the agent to use placeholders, and provides the placeholder reference. Enforced protection is: `before_agent_run` block gate (live-verified: run stopped before any model call), tool-result rewriting, and outbound delivery rewriting.
+- Live E2E also confirmed: GLiNER loads and detects in-process (zero-shot labels appear alongside regex hits), and outbound hooks (`message_sending`/`reply_payload_sending`) fire only on channel delivery — CLI `--local` runs without `--deliver` do not exercise them.
+
 ### Known follow-ups
 
 - Live end-to-end agent turn (gateway + real provider) exercising all four hook layers; rebuild the E2E baseline from closed PR #3 against the current runtime.
